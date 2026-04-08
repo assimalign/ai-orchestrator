@@ -24,6 +24,18 @@ param githubInstallationId string = ''
 @description('Speech voice used by the web experience for playback.')
 param speechVoice string = 'en-US-JennyNeural'
 
+@description('Enable Microsoft Entra authentication for the web app and API.')
+param authEnabled bool = false
+
+@description('Microsoft Entra tenant ID for MSAL sign-in and API token validation.')
+param entraTenantId string = ''
+
+@description('Microsoft Entra client ID for the SPA/API app registration.')
+param entraClientId string = ''
+
+@description('Microsoft Entra scope requested by the SPA when calling the API.')
+param entraScope string = ''
+
 @description('OpenAI model used for planning and synthesis.')
 param openAiModel string = 'gpt-5.4'
 
@@ -205,6 +217,22 @@ module apiContainerApp 'modules/container-app.bicep' = {
       {
         name: 'CORS_ORIGIN'
         value: '*'
+      }
+      {
+        name: 'AUTH_ENABLED'
+        value: string(authEnabled)
+      }
+      {
+        name: 'ENTRA_TENANT_ID'
+        value: entraTenantId
+      }
+      {
+        name: 'ENTRA_CLIENT_ID'
+        value: entraClientId
+      }
+      {
+        name: 'ENTRA_SCOPE'
+        value: entraScope
       }
       {
         name: 'RUNS_TABLE_NAME'
@@ -389,6 +417,22 @@ module webContainerApp 'modules/container-app.bicep' = {
       {
         name: 'API_BASE_URL'
         value: 'https://${apiContainerApp.outputs.fqdn}'
+      }
+      {
+        name: 'AUTH_ENABLED'
+        value: string(authEnabled)
+      }
+      {
+        name: 'ENTRA_TENANT_ID'
+        value: entraTenantId
+      }
+      {
+        name: 'ENTRA_CLIENT_ID'
+        value: entraClientId
+      }
+      {
+        name: 'ENTRA_SCOPE'
+        value: entraScope
       }
       {
         name: 'SPEECH_VOICE'

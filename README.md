@@ -49,6 +49,13 @@ Set these repository variables:
 - `ORCH_GITHUB_APP_ID` if using a GitHub App
 - `ORCH_GITHUB_INSTALLATION_ID` if using a GitHub App
 
+For Microsoft Entra app auth, the deploy workflow now reuses:
+
+- `AZURE_TENANT_ID`
+- `AZURE_CLIENT_ID`
+
+Set `ORCH_AUTH_ENABLED=true` to turn sign-in on, and optionally set `ORCH_ENTRA_SCOPE` if you do not want the default `api://<client-id>/access_as_user` scope.
+
 ## Local development
 
 1. Copy `.env.example` to `.env`
@@ -71,5 +78,5 @@ npm run dev --workspace @ai-dev-orchestrator/worker
 ## Deployment notes
 
 - The Bicep template creates Key Vault, but runtime model and GitHub secrets are seeded by the deploy workflow after infrastructure is up.
-- The API and worker use managed identity to read secrets from Key Vault.
+- The API and worker use managed identity in Azure, and the signed-in Azure developer identity locally, to read secrets from Key Vault.
 - The current API CORS setting defaults to `*` for easy first deployment. Tighten that once your public web URL is stable.

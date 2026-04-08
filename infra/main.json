@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "13343988368338001652"
+      "templateHash": "13574616218668282655"
     }
   },
   "parameters": {
@@ -60,6 +60,34 @@
       "defaultValue": "en-US-JennyNeural",
       "metadata": {
         "description": "Speech voice used by the web experience for playback."
+      }
+    },
+    "authEnabled": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable Microsoft Entra authentication for the web app and API."
+      }
+    },
+    "entraTenantId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Entra tenant ID for MSAL sign-in and API token validation."
+      }
+    },
+    "entraClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Entra client ID for the SPA/API app registration."
+      }
+    },
+    "entraScope": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Entra scope requested by the SPA when calling the API."
       }
     },
     "openAiModel": {
@@ -327,6 +355,22 @@
               {
                 "name": "CORS_ORIGIN",
                 "value": "*"
+              },
+              {
+                "name": "AUTH_ENABLED",
+                "value": "[string(parameters('authEnabled'))]"
+              },
+              {
+                "name": "ENTRA_TENANT_ID",
+                "value": "[parameters('entraTenantId')]"
+              },
+              {
+                "name": "ENTRA_CLIENT_ID",
+                "value": "[parameters('entraClientId')]"
+              },
+              {
+                "name": "ENTRA_SCOPE",
+                "value": "[parameters('entraScope')]"
               },
               {
                 "name": "RUNS_TABLE_NAME",
@@ -867,6 +911,22 @@
               {
                 "name": "API_BASE_URL",
                 "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'apiContainerApp'), '2025-04-01').outputs.fqdn.value)]"
+              },
+              {
+                "name": "AUTH_ENABLED",
+                "value": "[string(parameters('authEnabled'))]"
+              },
+              {
+                "name": "ENTRA_TENANT_ID",
+                "value": "[parameters('entraTenantId')]"
+              },
+              {
+                "name": "ENTRA_CLIENT_ID",
+                "value": "[parameters('entraClientId')]"
+              },
+              {
+                "name": "ENTRA_SCOPE",
+                "value": "[parameters('entraScope')]"
               },
               {
                 "name": "SPEECH_VOICE",

@@ -2,8 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import * as SpeechSdk from "microsoft-cognitiveservices-speech-sdk";
 import type { OrchestrationRun } from "@ai-dev-orchestrator/shared";
+import {
+  getAccessToken,
+  getSignedInAccount,
+  initializeAuth,
+  signIn,
+  signOut,
+  webRuntimeConfig,
+} from "./auth";
 
 interface AppConfigResponse {
+  authEnabled: boolean;
+  entraClientId: string;
+  entraScope: string;
+  entraTenantId: string;
   executionMode: string;
   speechEnabled: boolean;
   speechVoice: string;
@@ -19,7 +31,7 @@ interface SpeechTokenResponse {
   voice: string;
 }
 
-const apiBaseUrl = window.__APP_CONFIG__?.apiBaseUrl ?? "http://localhost:8080";
+const apiBaseUrl = webRuntimeConfig.apiBaseUrl;
 
 export function App() {
   const [config, setConfig] = useState<AppConfigResponse>();
@@ -29,10 +41,14 @@ export function App() {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [issueNumber, setIssueNumber] = useState("");
-  const [statusMessage, setStatusMessage] = useState("Ready for your next request.");
+  const [statusMessage, setStatusMessage] = useState("Preparing the orchestrator.");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [authReady, setAuthReady] = useState(!webRuntimeConfig.authEnabled);
+  const [isAuthenticated, setIsAuthenticated] = useState(!webRuntimeConfig.authEnabled);
+  const [accountLabel, setAccountLabel] = useState<string>();
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const activeRun = useMemo(
     () => runs.find((run: OrchestrationRun) => run.id === activeRunId) ?? runs[0],
@@ -40,9 +56,20 @@ export function App() {
   );
 
   useEffect(() => {
-    void loadConfig();
-    void loadRuns();
+    void boot();
   }, []);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    if (webRuntimeConfig.authEnabled && !isAuthenticated) {
+      return;
+    }
+
+    void refreshData();
+  }, [authReady, isAuthenticated]);
 
   useEffect(() => {
     if (!activeRun) {
@@ -58,16 +85,77 @@ export function App() {
     }, 4000);
 
     return () => window.clearInterval(timer);
-  }, [activeRun]);
+  }, [activeRun, authReady, isAuthenticated]);
+
+  async function boot() {
+    try {
+      const auth = await initializeAuth();
+      const account = auth.account ?? getSignedInAccount();
+
+      setAuthReady(true);
+      setIsAuthenticated(!auth.enabled || Boolean(account));
+      setAccountLabel(account?.name ?? account?.username);
+
+      if (auth.enabled && !account) {
+        setStatusMessage("Sign in with Microsoft Entra to use this app.");
+        return;
+      }
+
+      setStatusMessage("Ready for your next request.");
+    } catch (error) {
+      setAuthReady(true);
+      setIsAuthenticated(false);
+      setStatusMessage(
+        error instanceof Error ? error.message : "Authentication setup failed.",
+      );
+    }
+  }
+
+  async function apiFetch(path: string, init?: RequestInit) {
+    const headers = new Headers(init?.headers);
+
+    if (webRuntimeConfig.authEnabled) {
+      const accessToken = await getAccessToken();
+
+      if (!accessToken) {
+        throw new Error("You must sign in with Microsoft Entra to continue.");
+      }
+
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
+    const response = await fetch(`${apiBaseUrl}${path}`, {
+      ...init,
+      headers,
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `Request failed with ${response.status}.`);
+    }
+
+    return response;
+  }
+
+  async function refreshData() {
+    try {
+      await Promise.all([loadConfig(), loadRuns()]);
+      setStatusMessage("Ready for your next request.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Unable to reach the orchestrator API.",
+      );
+    }
+  }
 
   async function loadConfig() {
-    const response = await fetch(`${apiBaseUrl}/api/config`);
+    const response = await apiFetch("/api/config");
     const payload = (await response.json()) as AppConfigResponse;
     setConfig(payload);
   }
 
   async function loadRuns() {
-    const response = await fetch(`${apiBaseUrl}/api/runs`);
+    const response = await apiFetch("/api/runs");
     const payload = (await response.json()) as OrchestrationRun[];
     setRuns(payload);
 
@@ -76,17 +164,40 @@ export function App() {
     }
   }
 
+  async function handleSignIn() {
+    setIsSigningIn(true);
+    setStatusMessage("Opening Microsoft sign-in.");
+
+    try {
+      const account = await signIn();
+      setIsAuthenticated(true);
+      setAccountLabel(account?.name ?? account?.username);
+      await refreshData();
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Microsoft sign-in failed.",
+      );
+    } finally {
+      setIsSigningIn(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await signOut();
+    setIsAuthenticated(false);
+    setConfig(undefined);
+    setRuns([]);
+    setActiveRunId(undefined);
+    setStatusMessage("Signed out.");
+  }
+
   async function submitRun(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setStatusMessage("Dispatching your request to the orchestrator.");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/runs`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await apiFetch("/api/runs", {
         body: JSON.stringify({
           text,
           repository:
@@ -98,6 +209,10 @@ export function App() {
                 }
               : undefined,
         }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
       });
 
       const run = (await response.json()) as OrchestrationRun;
@@ -119,7 +234,7 @@ export function App() {
     setStatusMessage("Listening for your requirement.");
 
     try {
-      const tokenResponse = await fetch(`${apiBaseUrl}/api/speech/token`, {
+      const tokenResponse = await apiFetch("/api/speech/token", {
         method: "POST",
       });
       const speechToken = (await tokenResponse.json()) as SpeechTokenResponse;
@@ -170,11 +285,13 @@ export function App() {
       return;
     }
 
+    const summary = activeRun.summary;
+
     setIsSpeaking(true);
     setStatusMessage("Reading back the latest orchestration brief.");
 
     try {
-      const tokenResponse = await fetch(`${apiBaseUrl}/api/speech/token`, {
+      const tokenResponse = await apiFetch("/api/speech/token", {
         method: "POST",
       });
       const speechToken = (await tokenResponse.json()) as SpeechTokenResponse;
@@ -191,7 +308,7 @@ export function App() {
 
       await new Promise<void>((resolve, reject) => {
         synthesizer.speakTextAsync(
-          activeRun.summary!,
+          summary,
           (result) => {
             synthesizer.close();
 
@@ -246,145 +363,185 @@ export function App() {
               {config?.providers.anthropic ? "Claude" : "Claude off"}
             </strong>
           </div>
+          <div className="panel-row">
+            <span>Access</span>
+            <strong>
+              {webRuntimeConfig.authEnabled
+                ? isAuthenticated
+                  ? accountLabel ?? "Signed in"
+                  : "Sign-in required"
+                : "Open"}
+            </strong>
+          </div>
         </div>
       </header>
 
-      <main className="grid">
-        <section className="card composer">
-          <h2>New Run</h2>
-          <form onSubmit={submitRun}>
-            <label>
-              Requirement
-              <textarea
-                value={text}
+      {webRuntimeConfig.authEnabled && !isAuthenticated ? (
+        <main className="grid">
+          <section className="card run-detail">
+            <div className="detail-header">
+              <div>
+                <h2>Authentication Required</h2>
+                <p className="muted">{statusMessage}</p>
+              </div>
+              <button type="button" onClick={() => void handleSignIn()} disabled={!authReady || isSigningIn}>
+                {isSigningIn ? "Signing in..." : "Sign in with Microsoft"}
+              </button>
+            </div>
+            <article className="summary-block">
+              <h3>Configuration</h3>
+              <pre>{`API Base URL: ${apiBaseUrl}
+Tenant ID: ${webRuntimeConfig.entraTenantId || "(not set)"}
+Client ID: ${webRuntimeConfig.entraClientId || "(not set)"}
+Scope: ${webRuntimeConfig.entraScope || "(default access_as_user will be used)"}`}</pre>
+            </article>
+          </section>
+        </main>
+      ) : (
+        <main className="grid">
+          <section className="card composer">
+            <div className="detail-header">
+              <h2>New Run</h2>
+              {webRuntimeConfig.authEnabled ? (
+                <button className="secondary" type="button" onClick={() => void handleSignOut()}>
+                  Sign out
+                </button>
+              ) : null}
+            </div>
+            <form onSubmit={submitRun}>
+              <label>
+                Requirement
+                <textarea
+                  value={text}
                   onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                     setText(event.target.value)
                   }
-                placeholder="Describe the feature, bug, or development goal."
-                rows={8}
-              />
-            </label>
-
-            <div className="two-up">
-              <label>
-                GitHub owner
-                <input
-                  value={owner}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                    setOwner(event.target.value)
-                  }
-                  placeholder="your-org"
+                  placeholder="Describe the feature, bug, or development goal."
+                  rows={8}
                 />
               </label>
 
+              <div className="two-up">
+                <label>
+                  GitHub owner
+                  <input
+                    value={owner}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setOwner(event.target.value)
+                    }
+                    placeholder="your-org"
+                  />
+                </label>
+
+                <label>
+                  Repository
+                  <input
+                    value={repo}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setRepo(event.target.value)
+                    }
+                    placeholder="project-repo"
+                  />
+                </label>
+              </div>
+
               <label>
-                Repository
+                Issue number
                 <input
-                  value={repo}
+                  value={issueNumber}
                   onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                    setRepo(event.target.value)
+                    setIssueNumber(event.target.value)
                   }
-                  placeholder="project-repo"
+                  placeholder="Optional"
                 />
               </label>
+
+              <div className="button-row">
+                <button
+                  className="secondary"
+                  type="button"
+                  onClick={() => void captureSpeech()}
+                  disabled={!config?.speechEnabled || isListening}
+                >
+                  {isListening ? "Listening..." : "Speak Requirement"}
+                </button>
+                <button type="submit" disabled={!text.trim() || isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Launch Run"}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section className="card run-list">
+            <h2>Recent Runs</h2>
+            <div className="list">
+              {runs.length === 0 ? (
+                <p className="muted">No runs yet.</p>
+              ) : (
+                runs.map((run: OrchestrationRun) => (
+                  <button
+                    key={run.id}
+                    className={run.id === activeRun?.id ? "list-item active" : "list-item"}
+                    onClick={() => setActiveRunId(run.id)}
+                    type="button"
+                  >
+                    <span>{run.input.text.slice(0, 70)}</span>
+                    <strong>{run.status}</strong>
+                  </button>
+                ))
+              )}
             </div>
+          </section>
 
-            <label>
-              Issue number
-              <input
-                value={issueNumber}
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  setIssueNumber(event.target.value)
-                }
-                placeholder="Optional"
-              />
-            </label>
+          <section className="card run-detail">
+            <div className="detail-header">
+              <div>
+                <h2>Run Detail</h2>
+                <p className="muted">{statusMessage}</p>
+              </div>
 
-            <div className="button-row">
               <button
                 className="secondary"
                 type="button"
-                onClick={() => void captureSpeech()}
-                disabled={!config?.speechEnabled || isListening}
+                onClick={() => void speakSummary()}
+                disabled={!config?.speechEnabled || !activeRun?.summary || isSpeaking}
               >
-                {isListening ? "Listening..." : "Speak Requirement"}
-              </button>
-              <button type="submit" disabled={!text.trim() || isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Launch Run"}
+                {isSpeaking ? "Speaking..." : "Read Summary"}
               </button>
             </div>
-          </form>
-        </section>
 
-        <section className="card run-list">
-          <h2>Recent Runs</h2>
-          <div className="list">
-            {runs.length === 0 ? (
-              <p className="muted">No runs yet.</p>
-            ) : (
-              runs.map((run: OrchestrationRun) => (
-                <button
-                  key={run.id}
-                  className={run.id === activeRun?.id ? "list-item active" : "list-item"}
-                  onClick={() => setActiveRunId(run.id)}
-                  type="button"
-                >
-                  <span>{run.input.text.slice(0, 70)}</span>
-                  <strong>{run.status}</strong>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
+            {activeRun ? (
+              <>
+                <div className="status-strip">
+                  <span>Status</span>
+                  <strong>{activeRun.status}</strong>
+                </div>
 
-        <section className="card run-detail">
-          <div className="detail-header">
-            <div>
-              <h2>Run Detail</h2>
-              <p className="muted">{statusMessage}</p>
-            </div>
-
-            <button
-              className="secondary"
-              type="button"
-              onClick={() => void speakSummary()}
-              disabled={!config?.speechEnabled || !activeRun?.summary || isSpeaking}
-            >
-              {isSpeaking ? "Speaking..." : "Read Summary"}
-            </button>
-          </div>
-
-          {activeRun ? (
-            <>
-              <div className="status-strip">
-                <span>Status</span>
-                <strong>{activeRun.status}</strong>
-              </div>
-
-              {activeRun.summary ? (
-                <article className="summary-block">
-                  <h3>Latest Brief</h3>
-                  <pre>{activeRun.summary}</pre>
-                </article>
-              ) : null}
-
-              <div className="artifact-list">
-                {activeRun.artifacts.map((artifact) => (
-                  <article key={artifact.id} className="artifact-card">
-                    <div className="artifact-meta">
-                      <span>{artifact.stage}</span>
-                      <strong>{artifact.title}</strong>
-                    </div>
-                    <pre>{artifact.content}</pre>
+                {activeRun.summary ? (
+                  <article className="summary-block">
+                    <h3>Latest Brief</h3>
+                    <pre>{activeRun.summary}</pre>
                   </article>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="muted">Select a run to inspect its timeline.</p>
-          )}
-        </section>
-      </main>
+                ) : null}
+
+                <div className="artifact-list">
+                  {activeRun.artifacts.map((artifact) => (
+                    <article key={artifact.id} className="artifact-card">
+                      <div className="artifact-meta">
+                        <span>{artifact.stage}</span>
+                        <strong>{artifact.title}</strong>
+                      </div>
+                      <pre>{artifact.content}</pre>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="muted">Select a run to inspect its timeline.</p>
+            )}
+          </section>
+        </main>
+      )}
     </div>
   );
 }

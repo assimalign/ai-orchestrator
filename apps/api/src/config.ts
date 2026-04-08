@@ -1,9 +1,24 @@
 import { z } from "zod";
 
+const booleanish = z
+  .union([z.boolean(), z.string()])
+  .optional()
+  .transform((value) => {
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    return value?.toLowerCase() === "true";
+  });
+
 const configSchema = z.object({
   PORT: z.coerce.number().default(8080),
   EXECUTION_MODE: z.enum(["inline", "servicebus"]).default("inline"),
   CORS_ORIGIN: z.string().default("*"),
+  AUTH_ENABLED: booleanish.default(false),
+  ENTRA_TENANT_ID: z.string().optional(),
+  ENTRA_CLIENT_ID: z.string().optional(),
+  ENTRA_SCOPE: z.string().optional(),
   RUNS_TABLE_NAME: z.string().default("orchestratorruns"),
   SERVICE_BUS_QUEUE_NAME: z.string().default("orchestrator-runs"),
   OPENAI_MODEL: z.string().default("gpt-5.4"),

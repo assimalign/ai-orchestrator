@@ -4,6 +4,7 @@ import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import type { ConversationInput, OrchestrationRun } from "@ai-dev-orchestrator/shared";
 import { z } from "zod";
+import { createAuthGuard } from "./auth";
 import type { ApiRuntime } from "./runtime";
 
 const createRunSchema = z.object({
@@ -37,12 +38,23 @@ export async function buildApp(runtime: ApiRuntime) {
   });
   await app.register(sensible);
 
+  const authGuard = createAuthGuard(runtime.config);
+  app.addHook("onRequest", authGuard);
+
   app.get("/healthz", async () => ({
     ok: true,
     mode: runtime.config.EXECUTION_MODE,
   }));
 
   app.get("/api/config", async () => ({
+    authEnabled: runtime.config.AUTH_ENABLED,
+    entraTenantId: runtime.config.ENTRA_TENANT_ID ?? "",
+    entraClientId: runtime.config.ENTRA_CLIENT_ID ?? "",
+    entraScope:
+      runtime.config.ENTRA_SCOPE ??
+      (runtime.config.ENTRA_CLIENT_ID
+        ? `api://${runtime.config.ENTRA_CLIENT_ID}/access_as_user`
+        : ""),
     executionMode: runtime.config.EXECUTION_MODE,
     speechEnabled: Boolean(runtime.config.AZURE_SPEECH_REGION),
     speechVoice: runtime.config.SPEECH_TTS_VOICE,
