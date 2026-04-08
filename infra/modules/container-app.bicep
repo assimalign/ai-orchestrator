@@ -3,7 +3,7 @@ param location string
 param managedEnvironmentId string
 param image string
 param containerName string = name
-param registryServer string = 'ghcr.io'
+param registryServer string = ''
 param ingressEnabled bool = true
 param ingressExternal bool = true
 param targetPort int = 8080
@@ -14,12 +14,6 @@ param memory string = '1Gi'
 param env array = []
 param secrets array = []
 param scaleRules array = []
-
-var registryEntries = empty(registryServer) ? [] : [
-  {
-    server: registryServer
-  }
-]
 
 var secretEntries = [for secret in secrets: {
   name: secret.name
@@ -51,11 +45,16 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
   }
   properties: {
     managedEnvironmentId: managedEnvironmentId
-    configuration: union({
+    configuration: union(union({
       activeRevisionsMode: 'Single'
-      registries: registryEntries
       secrets: secretEntries
-    }, ingressConfig)
+    }, empty(registryServer) ? {} : {
+      registries: [
+        {
+          server: registryServer
+        }
+      ]
+    }), ingressConfig)
     template: {
       containers: [
         {

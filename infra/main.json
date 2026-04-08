@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "614546329526314803"
+      "templateHash": "13343988368338001652"
     }
   },
   "parameters": {
@@ -398,7 +398,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "8619621553964527780"
+              "templateHash": "9818690339990934386"
             }
           },
           "parameters": {
@@ -420,7 +420,7 @@
             },
             "registryServer": {
               "type": "string",
-              "defaultValue": "ghcr.io"
+              "defaultValue": ""
             },
             "ingressEnabled": {
               "type": "bool",
@@ -479,7 +479,6 @@
                 "input": "[if(contains(parameters('env')[copyIndex('envEntries')], 'secretRef'), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'secretRef', parameters('env')[copyIndex('envEntries')].secretRef), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'value', string(parameters('env')[copyIndex('envEntries')].value)))]"
               }
             ],
-            "registryEntries": "[if(empty(parameters('registryServer')), createArray(), createArray(createObject('server', parameters('registryServer'))))]",
             "ingressConfig": "[if(parameters('ingressEnabled'), createObject('ingress', createObject('allowInsecure', false(), 'external', parameters('ingressExternal'), 'targetPort', parameters('targetPort'), 'transport', 'auto')), createObject())]"
           },
           "resources": [
@@ -493,7 +492,7 @@
               },
               "properties": {
                 "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
-                "configuration": "[union(createObject('activeRevisionsMode', 'Single', 'registries', variables('registryEntries'), 'secrets', variables('secretEntries')), variables('ingressConfig'))]",
+                "configuration": "[union(union(createObject('activeRevisionsMode', 'Single', 'secrets', variables('secretEntries')), if(empty(parameters('registryServer')), createObject(), createObject('registries', createArray(createObject('server', parameters('registryServer')))))), variables('ingressConfig'))]",
                 "template": {
                   "containers": [
                     {
@@ -681,7 +680,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "8619621553964527780"
+              "templateHash": "9818690339990934386"
             }
           },
           "parameters": {
@@ -703,7 +702,7 @@
             },
             "registryServer": {
               "type": "string",
-              "defaultValue": "ghcr.io"
+              "defaultValue": ""
             },
             "ingressEnabled": {
               "type": "bool",
@@ -762,7 +761,6 @@
                 "input": "[if(contains(parameters('env')[copyIndex('envEntries')], 'secretRef'), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'secretRef', parameters('env')[copyIndex('envEntries')].secretRef), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'value', string(parameters('env')[copyIndex('envEntries')].value)))]"
               }
             ],
-            "registryEntries": "[if(empty(parameters('registryServer')), createArray(), createArray(createObject('server', parameters('registryServer'))))]",
             "ingressConfig": "[if(parameters('ingressEnabled'), createObject('ingress', createObject('allowInsecure', false(), 'external', parameters('ingressExternal'), 'targetPort', parameters('targetPort'), 'transport', 'auto')), createObject())]"
           },
           "resources": [
@@ -776,7 +774,7 @@
               },
               "properties": {
                 "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
-                "configuration": "[union(createObject('activeRevisionsMode', 'Single', 'registries', variables('registryEntries'), 'secrets', variables('secretEntries')), variables('ingressConfig'))]",
+                "configuration": "[union(union(createObject('activeRevisionsMode', 'Single', 'secrets', variables('secretEntries')), if(empty(parameters('registryServer')), createObject(), createObject('registries', createArray(createObject('server', parameters('registryServer')))))), variables('ingressConfig'))]",
                 "template": {
                   "containers": [
                     {
@@ -884,7 +882,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "8619621553964527780"
+              "templateHash": "9818690339990934386"
             }
           },
           "parameters": {
@@ -906,7 +904,7 @@
             },
             "registryServer": {
               "type": "string",
-              "defaultValue": "ghcr.io"
+              "defaultValue": ""
             },
             "ingressEnabled": {
               "type": "bool",
@@ -965,7 +963,6 @@
                 "input": "[if(contains(parameters('env')[copyIndex('envEntries')], 'secretRef'), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'secretRef', parameters('env')[copyIndex('envEntries')].secretRef), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'value', string(parameters('env')[copyIndex('envEntries')].value)))]"
               }
             ],
-            "registryEntries": "[if(empty(parameters('registryServer')), createArray(), createArray(createObject('server', parameters('registryServer'))))]",
             "ingressConfig": "[if(parameters('ingressEnabled'), createObject('ingress', createObject('allowInsecure', false(), 'external', parameters('ingressExternal'), 'targetPort', parameters('targetPort'), 'transport', 'auto')), createObject())]"
           },
           "resources": [
@@ -979,7 +976,7 @@
               },
               "properties": {
                 "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
-                "configuration": "[union(createObject('activeRevisionsMode', 'Single', 'registries', variables('registryEntries'), 'secrets', variables('secretEntries')), variables('ingressConfig'))]",
+                "configuration": "[union(union(createObject('activeRevisionsMode', 'Single', 'secrets', variables('secretEntries')), if(empty(parameters('registryServer')), createObject(), createObject('registries', createArray(createObject('server', parameters('registryServer')))))), variables('ingressConfig'))]",
                 "template": {
                   "containers": [
                     {
