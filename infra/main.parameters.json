@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2"
+    },
+    "baseName": {
+      "value": "ai-dev-orchestrator"
+    },
+    "webImage": {
+      "value": "ghcr.io/assimalign/ai-dev-orchestrator-web:latest"
+    },
+    "apiImage": {
+      "value": "ghcr.io/assimalign/ai-dev-orchestrator-api:latest"
+    },
+    "workerImage": {
+      "value": "ghcr.io/assimalign/ai-dev-orchestrator-worker:latest"
+    },
+    "githubAppId": {
+      "value": ""
+    },
+    "githubInstallationId": {
+      "value": ""
+    }
+  }
+}

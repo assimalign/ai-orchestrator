@@ -1,0 +1,238 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", "Aptos", sans-serif;
+  background:
+    radial-gradient(circle at top right, rgba(255, 184, 77, 0.35), transparent 32%),
+    radial-gradient(circle at left center, rgba(0, 127, 95, 0.18), transparent 28%),
+    #f7f3ea;
+  color: #182018;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.hero {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 2fr 1fr;
+  align-items: start;
+  margin-bottom: 1.75rem;
+}
+
+.hero h1 {
+  font-size: clamp(2.4rem, 4vw, 4.8rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  margin: 0.35rem 0 1rem;
+  max-width: 12ch;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  color: #7b4b00;
+  margin: 0;
+}
+
+.lede {
+  max-width: 52rem;
+  color: #465046;
+  font-size: 1.05rem;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1.1fr 0.9fr;
+}
+
+.card {
+  background: rgba(255, 252, 244, 0.82);
+  border: 1px solid rgba(24, 32, 24, 0.08);
+  border-radius: 24px;
+  padding: 1.25rem;
+  box-shadow: 0 16px 38px rgba(64, 58, 44, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.composer {
+  grid-column: 1;
+}
+
+.run-list {
+  grid-column: 2;
+}
+
+.run-detail {
+  grid-column: 1 / span 2;
+}
+
+.hero-panel,
+.status-strip {
+  background: #172521;
+  color: #eef4ef;
+  border-radius: 22px;
+  padding: 1rem 1.1rem;
+}
+
+.panel-row,
+.status-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.panel-row + .panel-row {
+  margin-top: 0.8rem;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+textarea,
+input {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 32, 24, 0.16);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.9rem 1rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.two-up {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.button-row,
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+button {
+  border: none;
+  border-radius: 999px;
+  background: #c75100;
+  color: white;
+  padding: 0.85rem 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: rgba(23, 37, 33, 0.1);
+  color: #172521;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.list-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  text-align: left;
+  background: rgba(23, 37, 33, 0.06);
+  color: #172521;
+  border-radius: 18px;
+}
+
+.list-item.active {
+  background: #172521;
+  color: #eef4ef;
+}
+
+.muted {
+  color: #667166;
+}
+
+.summary-block,
+.artifact-card {
+  margin-top: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(24, 32, 24, 0.1);
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.artifact-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.artifact-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.94rem;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    padding: 1rem;
+  }
+
+  .hero,
+  .grid,
+  .two-up {
+    grid-template-columns: 1fr;
+  }
+
+  .run-detail,
+  .composer,
+  .run-list {
+    grid-column: auto;
+  }
+
+  .detail-header,
+  .button-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

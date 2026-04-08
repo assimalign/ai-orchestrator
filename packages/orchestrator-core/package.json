@@ -1,0 +1,22 @@
+{
+  "name": "@ai-dev-orchestrator/orchestrator-core",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-dev-orchestrator/shared": "0.1.0",
+    "@anthropic-ai/sdk": "^0.66.0",
+    "@azure/data-tables": "^13.3.1",
+    "@azure/identity": "^4.13.0",
+    "@azure/keyvault-secrets": "^4.10.0",
+    "@azure/service-bus": "^7.9.5",
+    "@octokit/app": "^16.1.0",
+    "openai": "^6.3.0",
+    "octokit": "^5.0.3"
+  }
+}

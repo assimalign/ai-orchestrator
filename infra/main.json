@@ -1,0 +1,1056 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "614546329526314803"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Primary Azure region for all resources."
+      }
+    },
+    "baseName": {
+      "type": "string",
+      "defaultValue": "ai-dev-orchestrator",
+      "metadata": {
+        "description": "Base name used for resource naming."
+      }
+    },
+    "webImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Full GHCR image reference for the web frontend."
+      }
+    },
+    "apiImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Full GHCR image reference for the API service."
+      }
+    },
+    "workerImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Full GHCR image reference for the worker service."
+      }
+    },
+    "githubAppId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GitHub App identifier used to access repositories. Leave empty when using a personal token."
+      }
+    },
+    "githubInstallationId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GitHub App installation identifier."
+      }
+    },
+    "speechVoice": {
+      "type": "string",
+      "defaultValue": "en-US-JennyNeural",
+      "metadata": {
+        "description": "Speech voice used by the web experience for playback."
+      }
+    },
+    "openAiModel": {
+      "type": "string",
+      "defaultValue": "gpt-5.4",
+      "metadata": {
+        "description": "OpenAI model used for planning and synthesis."
+      }
+    },
+    "anthropicModel": {
+      "type": "string",
+      "defaultValue": "claude-sonnet-4-20250514",
+      "metadata": {
+        "description": "Anthropic model used for critique and review."
+      }
+    }
+  },
+  "variables": {
+    "normalizedBase": "[toLower(replace(parameters('baseName'), '-', ''))]",
+    "suffix": "[uniqueString(resourceGroup().id)]",
+    "logAnalyticsName": "[take(format('{0}-logs', parameters('baseName')), 63)]",
+    "appInsightsName": "[take(format('{0}-appi', parameters('baseName')), 260)]",
+    "containerAppEnvironmentName": "[take(format('{0}-env', parameters('baseName')), 32)]",
+    "serviceBusNamespaceName": "[take(format('{0}sb{1}', variables('normalizedBase'), variables('suffix')), 50)]",
+    "queueName": "orchestrator-runs",
+    "storageAccountName": "[take(format('{0}st{1}', variables('normalizedBase'), variables('suffix')), 24)]",
+    "keyVaultName": "[take(format('{0}kv{1}', variables('normalizedBase'), variables('suffix')), 24)]",
+    "speechServiceName": "[take(format('{0}-speech-{1}', variables('normalizedBase'), variables('suffix')), 64)]",
+    "apiAppName": "[take(format('{0}-api', parameters('baseName')), 32)]",
+    "workerAppName": "[take(format('{0}-worker', parameters('baseName')), 32)]",
+    "webAppName": "[take(format('{0}-web', parameters('baseName')), 32)]",
+    "keyVaultSecretsUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+    "keyVaultUrl": "[format('https://{0}.{1}/', variables('keyVaultName'), environment().suffixes.keyvaultDns)]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('logAnalyticsName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "retentionInDays": 30,
+        "sku": {
+          "name": "PerGB2018"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": false,
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'artifacts')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.ServiceBus/namespaces",
+      "apiVersion": "2024-01-01",
+      "name": "[variables('serviceBusNamespaceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard"
+      },
+      "properties": {
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.ServiceBus/namespaces/queues",
+      "apiVersion": "2024-01-01",
+      "name": "[format('{0}/{1}', variables('serviceBusNamespaceName'), variables('queueName'))]",
+      "properties": {
+        "defaultMessageTimeToLive": "P14D",
+        "deadLetteringOnMessageExpiration": true,
+        "duplicateDetectionHistoryTimeWindow": "PT10M",
+        "requiresDuplicateDetection": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('keyVaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "enableRbacAuthorization": true,
+        "enabledForTemplateDeployment": true,
+        "publicNetworkAccess": "Enabled",
+        "softDeleteRetentionInDays": 90,
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2024-10-01",
+      "name": "[variables('speechServiceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "SpeechServices",
+      "properties": {
+        "customSubDomainName": "[take(format('{0}speech{1}', variables('normalizedBase'), variables('suffix')), 64)]",
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('containerAppEnvironmentName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName')), '2023-09-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName')), '2023-09-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), variables('apiAppName'), 'kv-secrets-user')]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'apiContainerApp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[variables('keyVaultSecretsUserRoleDefinitionId')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'apiContainerApp')]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), variables('workerAppName'), 'kv-secrets-user')]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'workerContainerApp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[variables('keyVaultSecretsUserRoleDefinitionId')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'workerContainerApp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "apiContainerApp",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[variables('apiAppName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('apiImage')]"
+          },
+          "containerName": {
+            "value": "api"
+          },
+          "ingressExternal": {
+            "value": true
+          },
+          "targetPort": {
+            "value": 8080
+          },
+          "minReplicas": {
+            "value": 1
+          },
+          "maxReplicas": {
+            "value": 3
+          },
+          "cpu": {
+            "value": "0.75"
+          },
+          "memory": {
+            "value": "1.5Gi"
+          },
+          "secrets": {
+            "value": [
+              {
+                "name": "storage-connection-string",
+                "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-05-01').keys[0].value, environment().suffixes.storage)]"
+              },
+              {
+                "name": "service-bus-connection-string",
+                "value": "[listKeys(resourceId('Microsoft.ServiceBus/namespaces/AuthorizationRules', variables('serviceBusNamespaceName'), 'RootManageSharedAccessKey'), '2024-01-01').primaryConnectionString]"
+              }
+            ]
+          },
+          "env": {
+            "value": [
+              {
+                "name": "PORT",
+                "value": 8080
+              },
+              {
+                "name": "EXECUTION_MODE",
+                "value": "servicebus"
+              },
+              {
+                "name": "CORS_ORIGIN",
+                "value": "*"
+              },
+              {
+                "name": "RUNS_TABLE_NAME",
+                "value": "orchestratorruns"
+              },
+              {
+                "name": "SERVICE_BUS_QUEUE_NAME",
+                "value": "[variables('queueName')]"
+              },
+              {
+                "name": "OPENAI_MODEL",
+                "value": "[parameters('openAiModel')]"
+              },
+              {
+                "name": "ANTHROPIC_MODEL",
+                "value": "[parameters('anthropicModel')]"
+              },
+              {
+                "name": "KEY_VAULT_URL",
+                "value": "[variables('keyVaultUrl')]"
+              },
+              {
+                "name": "AZURE_SPEECH_REGION",
+                "value": "[parameters('location')]"
+              },
+              {
+                "name": "AZURE_SPEECH_KEY_SECRET_NAME",
+                "value": "azure-speech-key"
+              },
+              {
+                "name": "OPENAI_API_KEY_SECRET_NAME",
+                "value": "openai-api-key"
+              },
+              {
+                "name": "ANTHROPIC_API_KEY_SECRET_NAME",
+                "value": "anthropic-api-key"
+              },
+              {
+                "name": "GITHUB_TOKEN_SECRET_NAME",
+                "value": "github-token"
+              },
+              {
+                "name": "GITHUB_APP_PRIVATE_KEY_SECRET_NAME",
+                "value": "github-app-private-key"
+              },
+              {
+                "name": "GITHUB_APP_ID",
+                "value": "[parameters('githubAppId')]"
+              },
+              {
+                "name": "GITHUB_INSTALLATION_ID",
+                "value": "[parameters('githubInstallationId')]"
+              },
+              {
+                "name": "AZURE_STORAGE_CONNECTION_STRING",
+                "secretRef": "storage-connection-string"
+              },
+              {
+                "name": "SERVICE_BUS_CONNECTION_STRING",
+                "secretRef": "service-bus-connection-string"
+              }
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "8619621553964527780"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "managedEnvironmentId": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "containerName": {
+              "type": "string",
+              "defaultValue": "[parameters('name')]"
+            },
+            "registryServer": {
+              "type": "string",
+              "defaultValue": "ghcr.io"
+            },
+            "ingressEnabled": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "ingressExternal": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "targetPort": {
+              "type": "int",
+              "defaultValue": 8080
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "0.5"
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "1Gi"
+            },
+            "env": {
+              "type": "array",
+              "defaultValue": []
+            },
+            "secrets": {
+              "type": "array",
+              "defaultValue": []
+            },
+            "scaleRules": {
+              "type": "array",
+              "defaultValue": []
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "secretEntries",
+                "count": "[length(parameters('secrets'))]",
+                "input": {
+                  "name": "[parameters('secrets')[copyIndex('secretEntries')].name]",
+                  "value": "[parameters('secrets')[copyIndex('secretEntries')].value]"
+                }
+              },
+              {
+                "name": "envEntries",
+                "count": "[length(parameters('env'))]",
+                "input": "[if(contains(parameters('env')[copyIndex('envEntries')], 'secretRef'), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'secretRef', parameters('env')[copyIndex('envEntries')].secretRef), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'value', string(parameters('env')[copyIndex('envEntries')].value)))]"
+              }
+            ],
+            "registryEntries": "[if(empty(parameters('registryServer')), createArray(), createArray(createObject('server', parameters('registryServer'))))]",
+            "ingressConfig": "[if(parameters('ingressEnabled'), createObject('ingress', createObject('allowInsecure', false(), 'external', parameters('ingressExternal'), 'targetPort', parameters('targetPort'), 'transport', 'auto')), createObject())]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": "[union(createObject('activeRevisionsMode', 'Single', 'registries', variables('registryEntries'), 'secrets', variables('secretEntries')), variables('ingressConfig'))]",
+                "template": {
+                  "containers": [
+                    {
+                      "name": "[parameters('containerName')]",
+                      "image": "[parameters('image')]",
+                      "env": "[variables('envEntries')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      }
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": "[parameters('scaleRules')]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[if(parameters('ingressExternal'), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn, '')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+        "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "workerContainerApp",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[variables('workerAppName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('workerImage')]"
+          },
+          "containerName": {
+            "value": "worker"
+          },
+          "ingressEnabled": {
+            "value": false
+          },
+          "ingressExternal": {
+            "value": false
+          },
+          "targetPort": {
+            "value": 8080
+          },
+          "minReplicas": {
+            "value": 0
+          },
+          "maxReplicas": {
+            "value": 5
+          },
+          "cpu": {
+            "value": "0.75"
+          },
+          "memory": {
+            "value": "1.5Gi"
+          },
+          "secrets": {
+            "value": [
+              {
+                "name": "storage-connection-string",
+                "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-05-01').keys[0].value, environment().suffixes.storage)]"
+              },
+              {
+                "name": "service-bus-connection-string",
+                "value": "[listKeys(resourceId('Microsoft.ServiceBus/namespaces/AuthorizationRules', variables('serviceBusNamespaceName'), 'RootManageSharedAccessKey'), '2024-01-01').primaryConnectionString]"
+              }
+            ]
+          },
+          "env": {
+            "value": [
+              {
+                "name": "RUNS_TABLE_NAME",
+                "value": "orchestratorruns"
+              },
+              {
+                "name": "SERVICE_BUS_QUEUE_NAME",
+                "value": "[variables('queueName')]"
+              },
+              {
+                "name": "OPENAI_MODEL",
+                "value": "[parameters('openAiModel')]"
+              },
+              {
+                "name": "ANTHROPIC_MODEL",
+                "value": "[parameters('anthropicModel')]"
+              },
+              {
+                "name": "KEY_VAULT_URL",
+                "value": "[variables('keyVaultUrl')]"
+              },
+              {
+                "name": "OPENAI_API_KEY_SECRET_NAME",
+                "value": "openai-api-key"
+              },
+              {
+                "name": "ANTHROPIC_API_KEY_SECRET_NAME",
+                "value": "anthropic-api-key"
+              },
+              {
+                "name": "GITHUB_TOKEN_SECRET_NAME",
+                "value": "github-token"
+              },
+              {
+                "name": "GITHUB_APP_PRIVATE_KEY_SECRET_NAME",
+                "value": "github-app-private-key"
+              },
+              {
+                "name": "GITHUB_APP_ID",
+                "value": "[parameters('githubAppId')]"
+              },
+              {
+                "name": "GITHUB_INSTALLATION_ID",
+                "value": "[parameters('githubInstallationId')]"
+              },
+              {
+                "name": "AZURE_STORAGE_CONNECTION_STRING",
+                "secretRef": "storage-connection-string"
+              },
+              {
+                "name": "SERVICE_BUS_CONNECTION_STRING",
+                "secretRef": "service-bus-connection-string"
+              }
+            ]
+          },
+          "scaleRules": {
+            "value": [
+              {
+                "name": "servicebus-queue",
+                "custom": {
+                  "type": "azure-servicebus",
+                  "metadata": {
+                    "messageCount": "1",
+                    "namespace": "[variables('serviceBusNamespaceName')]",
+                    "queueName": "[variables('queueName')]"
+                  },
+                  "auth": [
+                    {
+                      "secretRef": "service-bus-connection-string",
+                      "triggerParameter": "connection"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "8619621553964527780"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "managedEnvironmentId": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "containerName": {
+              "type": "string",
+              "defaultValue": "[parameters('name')]"
+            },
+            "registryServer": {
+              "type": "string",
+              "defaultValue": "ghcr.io"
+            },
+            "ingressEnabled": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "ingressExternal": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "targetPort": {
+              "type": "int",
+              "defaultValue": 8080
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "0.5"
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "1Gi"
+            },
+            "env": {
+              "type": "array",
+              "defaultValue": []
+            },
+            "secrets": {
+              "type": "array",
+              "defaultValue": []
+            },
+            "scaleRules": {
+              "type": "array",
+              "defaultValue": []
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "secretEntries",
+                "count": "[length(parameters('secrets'))]",
+                "input": {
+                  "name": "[parameters('secrets')[copyIndex('secretEntries')].name]",
+                  "value": "[parameters('secrets')[copyIndex('secretEntries')].value]"
+                }
+              },
+              {
+                "name": "envEntries",
+                "count": "[length(parameters('env'))]",
+                "input": "[if(contains(parameters('env')[copyIndex('envEntries')], 'secretRef'), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'secretRef', parameters('env')[copyIndex('envEntries')].secretRef), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'value', string(parameters('env')[copyIndex('envEntries')].value)))]"
+              }
+            ],
+            "registryEntries": "[if(empty(parameters('registryServer')), createArray(), createArray(createObject('server', parameters('registryServer'))))]",
+            "ingressConfig": "[if(parameters('ingressEnabled'), createObject('ingress', createObject('allowInsecure', false(), 'external', parameters('ingressExternal'), 'targetPort', parameters('targetPort'), 'transport', 'auto')), createObject())]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": "[union(createObject('activeRevisionsMode', 'Single', 'registries', variables('registryEntries'), 'secrets', variables('secretEntries')), variables('ingressConfig'))]",
+                "template": {
+                  "containers": [
+                    {
+                      "name": "[parameters('containerName')]",
+                      "image": "[parameters('image')]",
+                      "env": "[variables('envEntries')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      }
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": "[parameters('scaleRules')]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[if(parameters('ingressExternal'), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn, '')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+        "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "webContainerApp",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[variables('webAppName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('webImage')]"
+          },
+          "containerName": {
+            "value": "web"
+          },
+          "ingressExternal": {
+            "value": true
+          },
+          "targetPort": {
+            "value": 8080
+          },
+          "minReplicas": {
+            "value": 1
+          },
+          "maxReplicas": {
+            "value": 2
+          },
+          "cpu": {
+            "value": "0.5"
+          },
+          "memory": {
+            "value": "1Gi"
+          },
+          "env": {
+            "value": [
+              {
+                "name": "API_BASE_URL",
+                "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'apiContainerApp'), '2025-04-01').outputs.fqdn.value)]"
+              },
+              {
+                "name": "SPEECH_VOICE",
+                "value": "[parameters('speechVoice')]"
+              }
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "8619621553964527780"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "managedEnvironmentId": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "containerName": {
+              "type": "string",
+              "defaultValue": "[parameters('name')]"
+            },
+            "registryServer": {
+              "type": "string",
+              "defaultValue": "ghcr.io"
+            },
+            "ingressEnabled": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "ingressExternal": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "targetPort": {
+              "type": "int",
+              "defaultValue": 8080
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "0.5"
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "1Gi"
+            },
+            "env": {
+              "type": "array",
+              "defaultValue": []
+            },
+            "secrets": {
+              "type": "array",
+              "defaultValue": []
+            },
+            "scaleRules": {
+              "type": "array",
+              "defaultValue": []
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "secretEntries",
+                "count": "[length(parameters('secrets'))]",
+                "input": {
+                  "name": "[parameters('secrets')[copyIndex('secretEntries')].name]",
+                  "value": "[parameters('secrets')[copyIndex('secretEntries')].value]"
+                }
+              },
+              {
+                "name": "envEntries",
+                "count": "[length(parameters('env'))]",
+                "input": "[if(contains(parameters('env')[copyIndex('envEntries')], 'secretRef'), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'secretRef', parameters('env')[copyIndex('envEntries')].secretRef), createObject('name', parameters('env')[copyIndex('envEntries')].name, 'value', string(parameters('env')[copyIndex('envEntries')].value)))]"
+              }
+            ],
+            "registryEntries": "[if(empty(parameters('registryServer')), createArray(), createArray(createObject('server', parameters('registryServer'))))]",
+            "ingressConfig": "[if(parameters('ingressEnabled'), createObject('ingress', createObject('allowInsecure', false(), 'external', parameters('ingressExternal'), 'targetPort', parameters('targetPort'), 'transport', 'auto')), createObject())]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": "[union(createObject('activeRevisionsMode', 'Single', 'registries', variables('registryEntries'), 'secrets', variables('secretEntries')), variables('ingressConfig'))]",
+                "template": {
+                  "containers": [
+                    {
+                      "name": "[parameters('containerName')]",
+                      "image": "[parameters('image')]",
+                      "env": "[variables('envEntries')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      }
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": "[parameters('scaleRules')]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[if(parameters('ingressExternal'), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn, '')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'apiContainerApp')]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apiUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'apiContainerApp'), '2025-04-01').outputs.fqdn.value)]"
+    },
+    "webUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'webContainerApp'), '2025-04-01').outputs.fqdn.value)]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[variables('keyVaultName')]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('storageAccountName')]"
+    },
+    "serviceBusNamespace": {
+      "type": "string",
+      "value": "[variables('serviceBusNamespaceName')]"
+    },
+    "speechServiceName": {
+      "type": "string",
+      "value": "[variables('speechServiceName')]"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
+    }
+  }
+}
