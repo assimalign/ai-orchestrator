@@ -6,11 +6,11 @@ public interface IAnthropicReviewClient
 {
     string DefaultModel { get; }
 
-    Task<ReviewArtifact> CritiquePlanAsync(
-        string requirement,
-        PlanningArtifact plan,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
+    Task<T> GenerateStructuredAsync<T>(
+        ProviderPromptRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<string> GenerateTextAsync(
+        ProviderPromptRequest request,
         CancellationToken cancellationToken = default);
 }

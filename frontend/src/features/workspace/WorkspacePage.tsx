@@ -46,6 +46,7 @@ export function WorkspacePage() {
           <ConversationFeed threadDetail={workspace.threadDetail} />
           <ComposerPanel
             anthropicModel={workspace.anthropicModel}
+            anthropicReasoningEffort={workspace.anthropicReasoningEffort}
             baseBranch={workspace.baseBranch}
             branchOptions={workspace.connectorBranches}
             connectorId={workspace.connectorId}
@@ -61,17 +62,20 @@ export function WorkspacePage() {
             isSpeaking={workspace.isSpeaking}
             latestAssistantMessage={workspace.latestAssistantMessage}
             onAnthropicModelChange={workspace.setAnthropicModel}
+            onAnthropicReasoningEffortChange={workspace.setAnthropicReasoningEffort}
             onBaseBranchChange={workspace.setBaseBranch}
             onCaptureSpeech={workspace.captureSpeech}
             onConnectorChange={workspace.setConnectorId}
             onDraftChange={workspace.setDraft}
             onManageConnectors={workspace.manageConnectors}
             onOpenAiModelChange={workspace.setOpenAiModel}
+            onOpenAiReasoningEffortChange={workspace.setOpenAiReasoningEffort}
             onRepositorySelect={workspace.selectRepository}
             onSpeakLatestResponse={workspace.speakLatestResponse}
             onSubmit={workspace.submitMessage}
             onTargetBranchChange={workspace.setTargetBranch}
             openAiModel={workspace.openAiModel}
+            openAiReasoningEffort={workspace.openAiReasoningEffort}
             owner={workspace.owner}
             repo={workspace.repo}
             statusMessage={workspace.statusMessage}

@@ -65,6 +65,7 @@ public static class OrchestratorRuntimeFactory
                 ? new AnthropicReviewClient(providerHttpClient, anthropicApiKey, settings.AnthropicModel)
                 : null;
         var engine = new OrchestrationEngine(
+            settings.MaxConsensusRounds,
             githubContextService,
             openAiClient,
             anthropicClient);

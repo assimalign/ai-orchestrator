@@ -148,7 +148,9 @@ public sealed class MemoryThreadRepository : IThreadRepository
             : new ModelSelection
             {
                 OpenAi = models.OpenAi,
+                OpenAiReasoningEffort = models.OpenAiReasoningEffort,
                 Anthropic = models.Anthropic,
+                AnthropicReasoningEffort = models.AnthropicReasoningEffort,
             };
 
     private static ThreadMessage CloneMessage(ThreadMessage message) =>

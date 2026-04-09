@@ -104,7 +104,13 @@ export function ThreadContextBar({
           <ContextChip value={`Target ${repository.targetBranch}`} />
         ) : null}
         {models?.openAi ? <ContextChip value={`ChatGPT ${formatModelLabel(models.openAi)}`} /> : null}
+        {models?.openAiReasoningEffort ? (
+          <ContextChip value={`ChatGPT reasoning ${formatReasoningLabel(models.openAiReasoningEffort)}`} />
+        ) : null}
         {models?.anthropic ? <ContextChip value={`Claude ${formatModelLabel(models.anthropic)}`} /> : null}
+        {models?.anthropicReasoningEffort ? (
+          <ContextChip value={`Claude reasoning ${formatReasoningLabel(models.anthropicReasoningEffort)}`} />
+        ) : null}
         <ContextChip value={`API ${apiBaseUrl}`} />
       </div>
     </div>
@@ -119,9 +125,20 @@ function formatModelLabel(modelId: string) {
       "gpt-5-codex": "GPT-5 Codex",
       "claude-sonnet-4-20250514": "Sonnet 4",
       "claude-opus-4-1-20250805": "Opus 4.1",
-      "claude-opus-4-20250514": "Opus 4",
+      "claude-opus-4-20250514": "Opus 4.6",
       "claude-3-7-sonnet-20250219": "3.7 Sonnet",
     }[modelId] ?? modelId
+  );
+}
+
+function formatReasoningLabel(effort: string) {
+  return (
+    {
+      none: "Standard",
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+    }[effort] ?? effort
   );
 }
 

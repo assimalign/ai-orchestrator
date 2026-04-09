@@ -13,150 +13,36 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
 {
     public string DefaultModel => model;
 
-    public async Task<PlanningArtifact> CreatePlanAsync(
-        string requirement,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
+    public async Task<T> GenerateStructuredAsync<T>(
+        ProviderPromptRequest request,
         CancellationToken cancellationToken = default)
     {
         var responseText = await SendAsync(
-            PromptLibrary.PlannerSystemPrompt,
-            requirement,
-            context,
-            threadHistory,
-            null,
-            null,
-            null,
-            "medium",
-            modelOverride,
+            request,
             cancellationToken);
 
-        return JsonExtraction.ExtractJsonObject<PlanningArtifact>(responseText);
+        return JsonExtraction.ExtractJsonObject<T>(responseText);
     }
 
-    public Task<string> SynthesizeBriefAsync(
-        string requirement,
-        PlanningArtifact plan,
-        ReviewArtifact review,
-        string? codexDebateReply,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
+    public Task<string> GenerateTextAsync(
+        ProviderPromptRequest request,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync(
-            PromptLibrary.SynthesizerSystemPrompt,
-            requirement,
-            context,
-            threadHistory,
-            plan,
-            review,
-            codexDebateReply,
-            "low",
-            modelOverride,
-            cancellationToken);
-    }
-
-    public Task<string> RespondToReviewAsync(
-        string requirement,
-        PlanningArtifact plan,
-        ReviewArtifact review,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAsync(
-            PromptLibrary.DebateSystemPrompt,
-            requirement,
-            context,
-            threadHistory,
-            plan,
-            review,
-            null,
-            "medium",
-            modelOverride,
-            cancellationToken);
-    }
-
-    public async Task<RepositoryExecutionContextArtifact> CreateExecutionContextAsync(
-        string requirement,
-        OrchestrationResult orchestration,
-        string repositoryTree,
-        string executionEnvironment,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
-        CancellationToken cancellationToken = default)
-    {
-        var responseText = await SendAsync(
-            PromptLibrary.ExecutionContextSystemPrompt,
-            requirement,
-            orchestration.Context,
-            threadHistory,
-            orchestration.Plan,
-            orchestration.Review,
-            orchestration.Summary,
-            "medium",
-            modelOverride,
-            cancellationToken,
-            additionalContext: BuildExecutionContextText(repositoryTree, executionEnvironment));
-
-        return JsonExtraction.ExtractJsonObject<RepositoryExecutionContextArtifact>(responseText);
-    }
-
-    public async Task<RepositoryExecutionArtifact> CreateExecutionArtifactAsync(
-        string requirement,
-        OrchestrationResult orchestration,
-        RepositoryExecutionContextArtifact executionContext,
-        string repositoryTree,
-        string executionEnvironment,
-        IReadOnlyDictionary<string, string> fileContents,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
-        CancellationToken cancellationToken = default)
-    {
-        var responseText = await SendAsync(
-            PromptLibrary.ExecutionPatchSystemPrompt,
-            requirement,
-            orchestration.Context,
-            threadHistory,
-            orchestration.Plan,
-            orchestration.Review,
-            orchestration.Summary,
-            "high",
-            modelOverride,
-            cancellationToken,
-            additionalContext: BuildExecutionArtifactText(
-                executionContext,
-                repositoryTree,
-                executionEnvironment,
-                fileContents));
-
-        return JsonExtraction.ExtractJsonObject<RepositoryExecutionArtifact>(responseText);
+        return SendAsync(request, cancellationToken);
     }
 
     private async Task<string> SendAsync(
-        string instructions,
-        string requirement,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        PlanningArtifact? plan,
-        ReviewArtifact? review,
-        string? codexDebateReply,
-        string reasoningEffort,
-        string? modelOverride,
-        CancellationToken cancellationToken,
-        string? additionalContext = null)
+        ProviderPromptRequest promptRequest,
+        CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        request.Content = JsonContent.Create(
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        httpRequest.Content = JsonContent.Create(
             new
             {
-                model = ResolveModel(modelOverride),
-                instructions,
-                reasoning = new { effort = reasoningEffort },
+                model = ResolveModel(promptRequest.ModelOverride),
+                instructions = promptRequest.SystemPrompt,
+                reasoning = new { effort = ResolveReasoningEffort(promptRequest.ReasoningEffort, "medium") },
                 input = new object[]
                 {
                     new
@@ -167,14 +53,7 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
                             new
                             {
                                 type = "input_text",
-                                text = BuildPromptText(
-                                    requirement,
-                                    context,
-                                    threadHistory,
-                                    plan,
-                                    review,
-                                    codexDebateReply,
-                                    additionalContext),
+                                text = PromptEnvelopeFormatter.BuildPromptText(promptRequest),
                             },
                         },
                     },
@@ -182,7 +61,7 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
             },
             options: JsonDefaults.Options);
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -193,70 +72,6 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
 
         using var document = JsonDocument.Parse(body);
         return ExtractOutputText(document.RootElement);
-    }
-
-    private static string BuildPromptText(
-        string requirement,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        PlanningArtifact? plan,
-        ReviewArtifact? review,
-        string? codexDebateReply,
-        string? additionalContext)
-    {
-        var lines = new List<string>
-        {
-            "Latest user request:",
-            requirement,
-            string.Empty,
-            "GitHub context:",
-            JsonExtraction.Serialize((object?)context ?? new Dictionary<string, string>()),
-        };
-
-        if (threadHistory is { Count: > 0 })
-        {
-            lines.Add(string.Empty);
-            lines.Add("Thread history:");
-            lines.Add(FormatThreadHistory(threadHistory));
-        }
-
-        if (plan is not null)
-        {
-            lines.Add(string.Empty);
-            lines.Add("Codex draft:");
-            lines.Add(plan.Message);
-
-            lines.Add(string.Empty);
-            lines.Add($"Requires implementation: {(plan.RequiresImplementation ? "yes" : "no")}");
-
-            if (!string.IsNullOrWhiteSpace(plan.SuggestedBranchName))
-            {
-                lines.Add(string.Empty);
-                lines.Add($"Suggested branch name: {plan.SuggestedBranchName}");
-            }
-        }
-
-        if (review is not null)
-        {
-            lines.Add(string.Empty);
-            lines.Add("Claude feedback:");
-            lines.Add(review.Message);
-        }
-
-        if (!string.IsNullOrWhiteSpace(codexDebateReply))
-        {
-            lines.Add(string.Empty);
-            lines.Add("Codex response to Claude:");
-            lines.Add(codexDebateReply);
-        }
-
-        if (!string.IsNullOrWhiteSpace(additionalContext))
-        {
-            lines.Add(string.Empty);
-            lines.Add(additionalContext);
-        }
-
-        return string.Join(Environment.NewLine, lines);
     }
 
     private static string BuildExecutionContextText(
@@ -272,6 +87,39 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
                 "Repository tree:",
                 repositoryTree,
             ]);
+    }
+
+    private static string BuildInspectionSummaryText(
+        RepositoryInspectionContextArtifact inspectionContext,
+        string repositoryTree,
+        IReadOnlyDictionary<string, string> fileContents)
+    {
+        var lines = new List<string>
+        {
+            "Inspection context:",
+            JsonExtraction.Serialize(inspectionContext),
+            string.Empty,
+            "Repository tree:",
+            repositoryTree,
+            string.Empty,
+            "Selected file contents:",
+        };
+
+        if (fileContents.Count == 0)
+        {
+            lines.Add("No file contents were provided.");
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        foreach (var entry in fileContents)
+        {
+            lines.Add($"--- FILE: {entry.Key} ---");
+            lines.Add(entry.Value);
+            lines.Add($"--- END FILE: {entry.Key} ---");
+            lines.Add(string.Empty);
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private static string BuildExecutionArtifactText(
@@ -311,44 +159,6 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static string FormatThreadHistory(IReadOnlyList<ThreadMessage> threadHistory)
-    {
-        var relevantMessages = threadHistory
-            .Where(message => message.Role is not ThreadMessageRole.System)
-            .TakeLast(8)
-            .ToArray();
-
-        if (relevantMessages.Length == 0)
-        {
-            return "No prior thread history.";
-        }
-
-        return string.Join(
-            Environment.NewLine,
-            relevantMessages.Select(
-                message =>
-                    $"[{message.CreatedAt:HH:mm}] {BuildMessageLabel(message)}: {message.Content.Trim()}"));
-    }
-
-    private static string BuildMessageLabel(ThreadMessage message)
-    {
-        return message.Role switch
-        {
-            ThreadMessageRole.User => "User",
-            ThreadMessageRole.Assistant => "Codex",
-            ThreadMessageRole.Stage => $"{BuildProviderLabel(message.Provider)} {message.Stage?.ToString() ?? "update"}",
-            _ => "System",
-        };
-    }
-
-    private static string BuildProviderLabel(string? provider) =>
-        provider?.ToLowerInvariant() switch
-        {
-            "claude" => "Claude",
-            "codex" => "Codex",
-            _ => "Agent",
-        };
-
     private static string ExtractOutputText(JsonElement root)
     {
         if (root.TryGetProperty("output_text", out var outputText))
@@ -384,4 +194,11 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
 
     private string ResolveModel(string? modelOverride) =>
         string.IsNullOrWhiteSpace(modelOverride) ? model : modelOverride.Trim();
+
+    private static string ResolveReasoningEffort(
+        string? reasoningEffortOverride,
+        string fallback) =>
+        string.IsNullOrWhiteSpace(reasoningEffortOverride)
+            ? fallback
+            : reasoningEffortOverride.Trim().ToLowerInvariant();
 }

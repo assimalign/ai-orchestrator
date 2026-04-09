@@ -10,6 +10,7 @@ import { RepositoryConnectorPicker } from "./RepositoryConnectorPicker";
 
 type ComposerPanelProps = {
   anthropicModel: string;
+  anthropicReasoningEffort: string;
   baseBranch: string;
   branchOptions: ConnectorBranchReference[];
   config?: AppConfigResponse;
@@ -25,16 +26,19 @@ type ComposerPanelProps = {
   isSpeaking: boolean;
   latestAssistantMessage?: ThreadMessage;
   onAnthropicModelChange: (value: string) => void;
+  onAnthropicReasoningEffortChange: (value: string) => void;
   onBaseBranchChange: (value: string) => void;
   onCaptureSpeech: () => Promise<void>;
   onConnectorChange: (value: string) => void;
   onDraftChange: (value: string) => void;
   onManageConnectors: () => void;
   onOpenAiModelChange: (value: string) => void;
+  onOpenAiReasoningEffortChange: (value: string) => void;
   onRepositorySelect: (repository: ConnectorRepositoryReference) => void;
   onSpeakLatestResponse: () => Promise<void>;
   onSubmit: () => Promise<void>;
   openAiModel: string;
+  openAiReasoningEffort: string;
   owner: string;
   repo: string;
   statusMessage: string;
@@ -44,6 +48,7 @@ type ComposerPanelProps = {
 
 export function ComposerPanel({
   anthropicModel,
+  anthropicReasoningEffort,
   baseBranch,
   branchOptions,
   config,
@@ -59,16 +64,19 @@ export function ComposerPanel({
   isSpeaking,
   latestAssistantMessage,
   onAnthropicModelChange,
+  onAnthropicReasoningEffortChange,
   onBaseBranchChange,
   onCaptureSpeech,
   onConnectorChange,
   onDraftChange,
   onManageConnectors,
   onOpenAiModelChange,
+  onOpenAiReasoningEffortChange,
   onRepositorySelect,
   onSpeakLatestResponse,
   onSubmit,
   openAiModel,
+  openAiReasoningEffort,
   owner,
   repo,
   statusMessage,
@@ -144,10 +152,26 @@ export function ComposerPanel({
               />
 
               <ToolbarSelect
+                label="ChatGPT reasoning"
+                value={openAiReasoningEffort}
+                options={config?.models.openAiReasoning ?? []}
+                onChange={onOpenAiReasoningEffortChange}
+                disabled={!config?.providers.openAi}
+              />
+
+              <ToolbarSelect
                 label="Claude"
                 value={anthropicModel}
                 options={config?.models.anthropic ?? []}
                 onChange={onAnthropicModelChange}
+                disabled={!config?.providers.anthropic}
+              />
+
+              <ToolbarSelect
+                label="Claude reasoning"
+                value={anthropicReasoningEffort}
+                options={config?.models.anthropicReasoning ?? []}
+                onChange={onAnthropicReasoningEffortChange}
                 disabled={!config?.providers.anthropic}
               />
 

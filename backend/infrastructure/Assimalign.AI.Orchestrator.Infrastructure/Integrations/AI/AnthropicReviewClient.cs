@@ -13,62 +13,50 @@ public sealed class AnthropicReviewClient(HttpClient httpClient, string apiKey, 
 {
     public string DefaultModel => model;
 
-    public async Task<ReviewArtifact> CritiquePlanAsync(
-        string requirement,
-        PlanningArtifact plan,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
+    public async Task<T> GenerateStructuredAsync<T>(
+        ProviderPromptRequest promptRequest,
         CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
-        request.Headers.Add("x-api-key", apiKey);
-        request.Headers.Add("anthropic-version", "2023-06-01");
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Content = JsonContent.Create(
-            new
+        var normalizedReasoningEffort = ResolveReasoningEffort(promptRequest.ReasoningEffort);
+        var requestBody = new Dictionary<string, object?>
+        {
+            ["model"] = ResolveModel(promptRequest.ModelOverride),
+            ["max_tokens"] = ResolveMaxTokens(normalizedReasoningEffort),
+            ["system"] = promptRequest.SystemPrompt,
+            ["messages"] = new object[]
             {
-                model = ResolveModel(modelOverride),
-                max_tokens = 1200,
-                system = PromptLibrary.ReviewerSystemPrompt,
-                messages = new object[]
+                new
                 {
-                    new
+                    role = "user",
+                    content = new object[]
                     {
-                        role = "user",
-                        content = new object[]
+                        new
                         {
-                            new
-                            {
-                                type = "text",
-                                text = string.Join(
-                                    Environment.NewLine,
-                                    new[]
-                                    {
-                                        "Requirement:",
-                                        requirement,
-                                        string.Empty,
-                                        "GitHub context:",
-                                        JsonExtraction.Serialize((object?)context ?? new Dictionary<string, string>()),
-                                        string.Empty,
-                                        "Thread history:",
-                                        FormatThreadHistory(threadHistory),
-                                        string.Empty,
-                                        "Codex draft:",
-                                        plan.Message,
-                                        $"Requires implementation: {(plan.RequiresImplementation ? "yes" : "no")}",
-                                        string.IsNullOrWhiteSpace(plan.SuggestedBranchName)
-                                            ? string.Empty
-                                            : $"Suggested branch name: {plan.SuggestedBranchName}",
-                                    }),
-                            },
+                            type = "text",
+                            text = PromptEnvelopeFormatter.BuildPromptText(promptRequest),
                         },
                     },
                 },
             },
-            options: JsonDefaults.Options);
+        };
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        var thinkingBudget = ResolveThinkingBudget(normalizedReasoningEffort);
+        if (thinkingBudget > 0)
+        {
+            requestBody["thinking"] = new
+            {
+                type = "enabled",
+                budget_tokens = thinkingBudget,
+            };
+        }
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
+        httpRequest.Headers.Add("x-api-key", apiKey);
+        httpRequest.Headers.Add("anthropic-version", "2023-06-01");
+        httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        httpRequest.Content = JsonContent.Create(requestBody, options: JsonDefaults.Options);
+
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -83,45 +71,92 @@ public sealed class AnthropicReviewClient(HttpClient httpClient, string apiKey, 
             .Where(item => item.GetProperty("type").GetString() == "text")
             .Select(item => item.GetProperty("text").GetString() ?? string.Empty);
 
-        return JsonExtraction.ExtractJsonObject<ReviewArtifact>(string.Join(Environment.NewLine, content));
+        return JsonExtraction.ExtractJsonObject<T>(string.Join(Environment.NewLine, content));
+    }
+
+    public async Task<string> GenerateTextAsync(
+        ProviderPromptRequest promptRequest,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedReasoningEffort = ResolveReasoningEffort(promptRequest.ReasoningEffort);
+        var requestBody = new Dictionary<string, object?>
+        {
+            ["model"] = ResolveModel(promptRequest.ModelOverride),
+            ["max_tokens"] = ResolveMaxTokens(normalizedReasoningEffort),
+            ["system"] = promptRequest.SystemPrompt,
+            ["messages"] = new object[]
+            {
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = PromptEnvelopeFormatter.BuildPromptText(promptRequest),
+                        },
+                    },
+                },
+            },
+        };
+
+        var thinkingBudget = ResolveThinkingBudget(normalizedReasoningEffort);
+        if (thinkingBudget > 0)
+        {
+            requestBody["thinking"] = new
+            {
+                type = "enabled",
+                budget_tokens = thinkingBudget,
+            };
+        }
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
+        httpRequest.Headers.Add("x-api-key", apiKey);
+        httpRequest.Headers.Add("anthropic-version", "2023-06-01");
+        httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        httpRequest.Content = JsonContent.Create(requestBody, options: JsonDefaults.Options);
+
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Anthropic request failed with {(int)response.StatusCode}: {body}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        var content = document.RootElement.GetProperty("content")
+            .EnumerateArray()
+            .Where(item => item.GetProperty("type").GetString() == "text")
+            .Select(item => item.GetProperty("text").GetString() ?? string.Empty);
+
+        return string.Join(Environment.NewLine, content);
     }
 
     private string ResolveModel(string? modelOverride) =>
         string.IsNullOrWhiteSpace(modelOverride) ? model : modelOverride.Trim();
 
-    private static string FormatThreadHistory(IReadOnlyList<ThreadMessage>? threadHistory)
-    {
-        if (threadHistory is not { Count: > 0 })
-        {
-            return "No prior thread history.";
-        }
+    private static string ResolveReasoningEffort(string? reasoningEffortOverride) =>
+        string.IsNullOrWhiteSpace(reasoningEffortOverride)
+            ? "medium"
+            : reasoningEffortOverride.Trim().ToLowerInvariant();
 
-        return string.Join(
-            Environment.NewLine,
-            threadHistory
-                .Where(message => message.Role is not ThreadMessageRole.System)
-                .TakeLast(8)
-                .Select(
-                    message =>
-                        $"[{message.CreatedAt:HH:mm}] {BuildMessageLabel(message)}: {message.Content.Trim()}"));
+    private static int ResolveThinkingBudget(string reasoningEffort) =>
+        reasoningEffort switch
+        {
+            "none" => 0,
+            "low" => 1024,
+            "medium" => 2048,
+            "high" => 4096,
+            _ => 2048,
+        };
+
+    private static int ResolveMaxTokens(string reasoningEffort)
+    {
+        var thinkingBudget = ResolveThinkingBudget(reasoningEffort);
+        return thinkingBudget > 0 ? thinkingBudget + 1600 : 1600;
     }
 
-    private static string BuildMessageLabel(ThreadMessage message)
-    {
-        return message.Role switch
-        {
-            ThreadMessageRole.User => "User",
-            ThreadMessageRole.Assistant => "Codex",
-            ThreadMessageRole.Stage => $"{BuildProviderLabel(message.Provider)} {message.Stage?.ToString() ?? "update"}",
-            _ => "System",
-        };
-    }
-
-    private static string BuildProviderLabel(string? provider) =>
-        provider?.ToLowerInvariant() switch
-        {
-            "claude" => "Claude",
-            "codex" => "Codex",
-            _ => "Agent",
-        };
 }

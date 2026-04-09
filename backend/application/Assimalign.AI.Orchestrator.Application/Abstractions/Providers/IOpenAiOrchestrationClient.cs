@@ -6,49 +6,11 @@ public interface IOpenAiOrchestrationClient
 {
     string DefaultModel { get; }
 
-    Task<PlanningArtifact> CreatePlanAsync(
-        string requirement,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
+    Task<T> GenerateStructuredAsync<T>(
+        ProviderPromptRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<string> RespondToReviewAsync(
-        string requirement,
-        PlanningArtifact plan,
-        ReviewArtifact review,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
-        CancellationToken cancellationToken = default);
-
-    Task<string> SynthesizeBriefAsync(
-        string requirement,
-        PlanningArtifact plan,
-        ReviewArtifact review,
-        string? codexDebateReply,
-        GitHubContextSnapshot? context,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
-        CancellationToken cancellationToken = default);
-
-    Task<RepositoryExecutionContextArtifact> CreateExecutionContextAsync(
-        string requirement,
-        OrchestrationResult orchestration,
-        string repositoryTree,
-        string executionEnvironment,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
-        CancellationToken cancellationToken = default);
-
-    Task<RepositoryExecutionArtifact> CreateExecutionArtifactAsync(
-        string requirement,
-        OrchestrationResult orchestration,
-        RepositoryExecutionContextArtifact executionContext,
-        string repositoryTree,
-        string executionEnvironment,
-        IReadOnlyDictionary<string, string> fileContents,
-        IReadOnlyList<ThreadMessage>? threadHistory,
-        string? modelOverride = null,
+    Task<string> GenerateTextAsync(
+        ProviderPromptRequest request,
         CancellationToken cancellationToken = default);
 }

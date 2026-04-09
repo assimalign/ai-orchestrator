@@ -1,10 +1,12 @@
 using Assimalign.AI.Orchestrator.Application.Abstractions.GitHub;
 using Assimalign.AI.Orchestrator.Application.Abstractions.Providers;
 using Assimalign.AI.Orchestrator.Core.Models;
+using Assimalign.AI.Orchestrator.Core.Prompts;
 
 namespace Assimalign.AI.Orchestrator.Application.Services;
 
 public sealed class OrchestrationEngine(
+    int maxConsensusRounds,
     IGitHubContextService gitHubContextService,
     IOpenAiOrchestrationClient? openAiClient,
     IAnthropicReviewClient? anthropicClient)
@@ -27,11 +29,8 @@ public sealed class OrchestrationEngine(
             await onStage(new StageUpdate { Status = ThreadStageStatus.Planning });
         }
 
-        var plan = await openAiClient.CreatePlanAsync(
-            input.Text,
-            context,
-            threadHistory,
-            input.Models?.OpenAi,
+        var plan = await openAiClient.GenerateStructuredAsync<PlanningArtifact>(
+            BuildPlanRequest(input, context, threadHistory),
             cancellationToken);
         if (onStage is not null)
         {
@@ -53,75 +52,91 @@ public sealed class OrchestrationEngine(
         }
 
         ReviewArtifact review;
-        string? codexDebateReply = null;
+        DebateArtifact? debate = null;
         if (anthropicClient is not null)
         {
-            if (onStage is not null)
-            {
-                await onStage(new StageUpdate { Status = ThreadStageStatus.Reviewing });
-            }
-
             try
             {
-                review = await anthropicClient.CritiquePlanAsync(
-                    input.Text,
-                    plan,
-                    context,
-                    threadHistory,
-                    input.Models?.Anthropic,
-                    cancellationToken);
+                review = new ReviewArtifact();
 
-                if (onStage is not null)
+                for (var round = 0; round < Math.Max(1, maxConsensusRounds); round++)
                 {
-                    await onStage(new StageUpdate
+                    if (onStage is not null)
                     {
-                        Status = ThreadStageStatus.Reviewing,
-                        Message = new ThreadMessage
+                        await onStage(new StageUpdate { Status = ThreadStageStatus.Reviewing });
+                    }
+
+                    review = await anthropicClient.GenerateStructuredAsync<ReviewArtifact>(
+                        BuildReviewRequest(input, context, threadHistory, plan, debate),
+                        cancellationToken);
+
+                    if (onStage is not null)
+                    {
+                        await onStage(new StageUpdate
                         {
-                            Id = Guid.NewGuid().ToString("D"),
-                            Role = ThreadMessageRole.Stage,
-                            Stage = ThreadStageStatus.Reviewing,
-                            Title = BuildStageTitle("Claude", input.Models?.Anthropic ?? anthropicClient.DefaultModel),
-                            Content = review.Message.Trim(),
-                            Provider = "claude",
-                            CreatedAt = DateTimeOffset.UtcNow,
-                            Metadata = BuildModelMetadata(
-                                input.Models?.Anthropic ?? anthropicClient.DefaultModel),
-                        },
-                    });
+                            Status = ThreadStageStatus.Reviewing,
+                            Message = new ThreadMessage
+                            {
+                                Id = Guid.NewGuid().ToString("D"),
+                                Role = ThreadMessageRole.Stage,
+                                Stage = ThreadStageStatus.Reviewing,
+                                Title = BuildStageTitle("Claude", input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                                Content = review.Message.Trim(),
+                                Provider = "claude",
+                                CreatedAt = DateTimeOffset.UtcNow,
+                                Metadata = BuildModelMetadata(
+                                    input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                            },
+                        });
+                    }
+
+                    if (review.NeedsUserDecision)
+                    {
+                        return BuildUserDecisionResult(context, plan, review, debate);
+                    }
+
+                    if (onStage is not null)
+                    {
+                        await onStage(new StageUpdate { Status = ThreadStageStatus.Synthesizing });
+                    }
+
+                    debate = await openAiClient.GenerateStructuredAsync<DebateArtifact>(
+                        BuildDebateRequest(input, context, threadHistory, plan, review, debate),
+                        cancellationToken);
+
+                    if (onStage is not null)
+                    {
+                        await onStage(new StageUpdate
+                        {
+                            Status = ThreadStageStatus.Synthesizing,
+                            Message = new ThreadMessage
+                            {
+                                Id = Guid.NewGuid().ToString("D"),
+                                Role = ThreadMessageRole.Stage,
+                                Stage = ThreadStageStatus.Synthesizing,
+                                Title = BuildStageTitle("Codex", input.Models?.OpenAi ?? openAiClient.DefaultModel),
+                                Content = debate.Message.Trim(),
+                                Provider = "codex",
+                                CreatedAt = DateTimeOffset.UtcNow,
+                                Metadata = BuildModelMetadata(input.Models?.OpenAi ?? openAiClient.DefaultModel),
+                            },
+                        });
+                    }
+
+                    if (debate.NeedsUserDecision)
+                    {
+                        return BuildUserDecisionResult(context, plan, review, debate);
+                    }
+
+                    if (review.IsAligned || debate.IsAligned)
+                    {
+                        break;
+                    }
                 }
 
-                if (onStage is not null)
+                if (debate is not null && !debate.IsAligned && !review.IsAligned)
                 {
-                    await onStage(new StageUpdate { Status = ThreadStageStatus.Synthesizing });
-                }
-
-                codexDebateReply = await openAiClient.RespondToReviewAsync(
-                    input.Text,
-                    plan,
-                    review,
-                    context,
-                    threadHistory,
-                    input.Models?.OpenAi,
-                    cancellationToken);
-
-                if (onStage is not null)
-                {
-                    await onStage(new StageUpdate
-                    {
-                        Status = ThreadStageStatus.Synthesizing,
-                        Message = new ThreadMessage
-                        {
-                            Id = Guid.NewGuid().ToString("D"),
-                            Role = ThreadMessageRole.Stage,
-                            Stage = ThreadStageStatus.Synthesizing,
-                            Title = BuildStageTitle("Codex", input.Models?.OpenAi ?? openAiClient.DefaultModel),
-                            Content = codexDebateReply.Trim(),
-                            Provider = "codex",
-                            CreatedAt = DateTimeOffset.UtcNow,
-                            Metadata = BuildModelMetadata(input.Models?.OpenAi ?? openAiClient.DefaultModel),
-                        },
-                    });
+                    return BuildFallbackUserDecisionResult(context, plan, review, debate);
                 }
             }
             catch (Exception error)
@@ -162,14 +177,8 @@ public sealed class OrchestrationEngine(
             await onStage(new StageUpdate { Status = ThreadStageStatus.Synthesizing });
         }
 
-        var summary = await openAiClient.SynthesizeBriefAsync(
-            input.Text,
-            plan,
-            review,
-            codexDebateReply,
-            context,
-            threadHistory,
-            input.Models?.OpenAi,
+        var summary = await openAiClient.GenerateTextAsync(
+            BuildSummaryRequest(input, context, threadHistory, plan, review, debate),
             cancellationToken);
 
         return new OrchestrationResult
@@ -177,12 +186,131 @@ public sealed class OrchestrationEngine(
             Context = context,
             Plan = plan,
             Review = review,
+            Debate = debate,
             Summary = summary.Trim(),
         };
     }
 
     private static string BuildStageTitle(string baseTitle, string modelId) =>
         string.IsNullOrWhiteSpace(modelId) ? baseTitle : $"{baseTitle} · {modelId}";
+
+    private static ProviderPromptRequest BuildPlanRequest(
+        ConversationInput input,
+        GitHubContextSnapshot? context,
+        IReadOnlyList<ThreadMessage>? threadHistory) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.PlannerSystemPrompt,
+            Requirement = input.Text,
+            Context = context,
+            ThreadHistory = threadHistory,
+            ModelOverride = input.Models?.OpenAi,
+            ReasoningEffort = input.Models?.OpenAiReasoningEffort ?? "medium",
+        };
+
+    private static ProviderPromptRequest BuildReviewRequest(
+        ConversationInput input,
+        GitHubContextSnapshot? context,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        PlanningArtifact plan,
+        DebateArtifact? debate) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.ReviewerSystemPrompt,
+            Requirement = input.Text,
+            Context = context,
+            ThreadHistory = threadHistory,
+            Plan = plan,
+            Debate = debate,
+            ModelOverride = input.Models?.Anthropic,
+            ReasoningEffort = input.Models?.AnthropicReasoningEffort ?? "medium",
+        };
+
+    private static ProviderPromptRequest BuildDebateRequest(
+        ConversationInput input,
+        GitHubContextSnapshot? context,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        PlanningArtifact plan,
+        ReviewArtifact review,
+        DebateArtifact? debate) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.DebateSystemPrompt,
+            Requirement = input.Text,
+            Context = context,
+            ThreadHistory = threadHistory,
+            Plan = plan,
+            Review = review,
+            Debate = debate,
+            ModelOverride = input.Models?.OpenAi,
+            ReasoningEffort = input.Models?.OpenAiReasoningEffort ?? "medium",
+        };
+
+    private static ProviderPromptRequest BuildSummaryRequest(
+        ConversationInput input,
+        GitHubContextSnapshot? context,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        PlanningArtifact plan,
+        ReviewArtifact review,
+        DebateArtifact? debate) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.SynthesizerSystemPrompt,
+            Requirement = input.Text,
+            Context = context,
+            ThreadHistory = threadHistory,
+            Plan = plan,
+            Review = review,
+            Debate = debate,
+            ModelOverride = input.Models?.OpenAi,
+            ReasoningEffort = input.Models?.OpenAiReasoningEffort ?? "low",
+        };
+
+    private static OrchestrationResult BuildUserDecisionResult(
+        GitHubContextSnapshot? context,
+        PlanningArtifact plan,
+        ReviewArtifact review,
+        DebateArtifact? debate)
+    {
+        var prompt = !string.IsNullOrWhiteSpace(debate?.UserDecisionPrompt)
+            ? debate.UserDecisionPrompt
+            : !string.IsNullOrWhiteSpace(review.UserDecisionPrompt)
+                ? review.UserDecisionPrompt
+                : "Codex and Claude surfaced a tradeoff that needs your call before implementation continues.";
+
+        return new OrchestrationResult
+        {
+            Context = context,
+            Plan = plan,
+            Review = review,
+            Debate = debate,
+            Summary = prompt.Trim(),
+            NeedsUserDecision = true,
+        };
+    }
+
+    private static OrchestrationResult BuildFallbackUserDecisionResult(
+        GitHubContextSnapshot? context,
+        PlanningArtifact plan,
+        ReviewArtifact review,
+        DebateArtifact debate)
+    {
+        var prompt = !string.IsNullOrWhiteSpace(debate.UserDecisionPrompt)
+            ? debate.UserDecisionPrompt
+            : !string.IsNullOrWhiteSpace(review.UserDecisionPrompt)
+                ? review.UserDecisionPrompt
+                : "Codex and Claude still disagree after the allotted debate rounds. Which direction should we take?";
+
+        return new OrchestrationResult
+        {
+            Context = context,
+            Plan = plan,
+            Review = review,
+            Debate = debate,
+            Summary = prompt.Trim(),
+            NeedsUserDecision = true,
+        };
+    }
 
     private static string BuildReviewFallbackMessage(Exception error)
     {

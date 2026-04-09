@@ -10,11 +10,16 @@ public sealed class OrchestratorSettings
     public string CorsOrigin { get; init; } = "*";
     public string TableName { get; init; } = "orchestratorstate";
     public string ServiceBusQueueName { get; init; } = "orchestrator-runs";
+    public int MaxConsensusRounds { get; init; } = 2;
     public string OpenAiModel { get; init; } = "gpt-5.4";
     public string AnthropicModel { get; init; } = "claude-sonnet-4-20250514";
+    public string OpenAiReasoningEffort { get; init; } = "medium";
+    public string AnthropicReasoningEffort { get; init; } = "medium";
     public IReadOnlyList<string> OpenAiModelOptions { get; init; } = ["gpt-5.4", "gpt-5.4-mini", "gpt-5-codex"];
     public IReadOnlyList<string> AnthropicModelOptions { get; init; } =
         ["claude-sonnet-4-20250514", "claude-opus-4-1-20250805", "claude-opus-4-20250514", "claude-3-7-sonnet-20250219"];
+    public IReadOnlyList<string> OpenAiReasoningEffortOptions { get; init; } = ["low", "medium", "high"];
+    public IReadOnlyList<string> AnthropicReasoningEffortOptions { get; init; } = ["none", "low", "medium", "high"];
     public string? KeyVaultUrl { get; init; }
     public string? AzureStorageConnectionString { get; init; }
     public string? ServiceBusConnectionString { get; init; }
@@ -56,10 +61,22 @@ public sealed class OrchestratorSettings
                 Id = modelId,
                 Label = GetModelLabel(modelId),
             }).ToArray(),
+            OpenAiReasoning = OpenAiReasoningEffortOptions.Select(effort => new ModelOption
+            {
+                Id = effort,
+                Label = GetReasoningLabel(effort),
+            }).ToArray(),
+            AnthropicReasoning = AnthropicReasoningEffortOptions.Select(effort => new ModelOption
+            {
+                Id = effort,
+                Label = GetReasoningLabel(effort),
+            }).ToArray(),
             Defaults = new ModelSelection
             {
                 OpenAi = OpenAiModel,
+                OpenAiReasoningEffort = OpenAiReasoningEffort,
                 Anthropic = AnthropicModel,
+                AnthropicReasoningEffort = AnthropicReasoningEffort,
             },
         };
 
@@ -67,6 +84,8 @@ public sealed class OrchestratorSettings
     {
         var openAiModel = configuration["OPENAI_MODEL"] ?? "gpt-5.4";
         var anthropicModel = configuration["ANTHROPIC_MODEL"] ?? "claude-sonnet-4-20250514";
+        var openAiReasoningEffort = configuration["OPENAI_REASONING_EFFORT"] ?? "medium";
+        var anthropicReasoningEffort = configuration["ANTHROPIC_REASONING_EFFORT"] ?? "medium";
 
         return new OrchestratorSettings
         {
@@ -81,8 +100,11 @@ public sealed class OrchestratorSettings
                 configuration["ORCHESTRATOR_QUEUE_NAME"]
                 ?? configuration["SERVICE_BUS_QUEUE_NAME"]
                 ?? "orchestrator-runs",
+            MaxConsensusRounds = Math.Max(1, configuration.GetValue("MAX_CONSENSUS_ROUNDS", 2)),
             OpenAiModel = openAiModel,
             AnthropicModel = anthropicModel,
+            OpenAiReasoningEffort = openAiReasoningEffort,
+            AnthropicReasoningEffort = anthropicReasoningEffort,
             OpenAiModelOptions = ParseModelOptions(
                 configuration["OPENAI_MODEL_OPTIONS"],
                 openAiModel,
@@ -94,6 +116,19 @@ public sealed class OrchestratorSettings
                 "claude-opus-4-1-20250805",
                 "claude-opus-4-20250514",
                 "claude-3-7-sonnet-20250219"),
+            OpenAiReasoningEffortOptions = ParseModelOptions(
+                configuration["OPENAI_REASONING_EFFORT_OPTIONS"],
+                openAiReasoningEffort,
+                "low",
+                "medium",
+                "high"),
+            AnthropicReasoningEffortOptions = ParseModelOptions(
+                configuration["ANTHROPIC_REASONING_EFFORT_OPTIONS"],
+                anthropicReasoningEffort,
+                "none",
+                "low",
+                "medium",
+                "high"),
             KeyVaultUrl = configuration["KEY_VAULT_URL"],
             AzureStorageConnectionString = configuration["AZURE_STORAGE_CONNECTION_STRING"],
             ServiceBusConnectionString = configuration["SERVICE_BUS_CONNECTION_STRING"],
@@ -153,8 +188,18 @@ public sealed class OrchestratorSettings
             "gpt-5-codex" => "GPT-5 Codex",
             "claude-sonnet-4-20250514" => "Claude Sonnet 4",
             "claude-opus-4-1-20250805" => "Claude Opus 4.1",
-            "claude-opus-4-20250514" => "Claude Opus 4",
+            "claude-opus-4-20250514" => "Claude Opus 4.6",
             "claude-3-7-sonnet-20250219" => "Claude 3.7 Sonnet",
             _ => modelId,
+        };
+
+    private static string GetReasoningLabel(string effort) =>
+        effort.ToLowerInvariant() switch
+        {
+            "none" => "Standard",
+            "low" => "Low",
+            "medium" => "Medium",
+            "high" => "High",
+            _ => effort,
         };
 }

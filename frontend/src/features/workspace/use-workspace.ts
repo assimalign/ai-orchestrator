@@ -53,7 +53,9 @@ export function useWorkspace(enabled: boolean) {
   const [baseBranch, setBaseBranch] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
   const [openAiModel, setOpenAiModel] = useState("");
+  const [openAiReasoningEffort, setOpenAiReasoningEffort] = useState("");
   const [anthropicModel, setAnthropicModel] = useState("");
+  const [anthropicReasoningEffort, setAnthropicReasoningEffort] = useState("");
   const [statusMessage, setStatusMessage] = useState("Preparing your workspace.");
   const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
@@ -119,11 +121,25 @@ export function useWorkspace(enabled: boolean) {
     const defaultConnector = getDefaultConnector(config.connectors);
     setConnectorId((current) => current || defaultConnector?.id || "github");
     setOpenAiModel((current) => current || config.models.defaults.openAi || config.models.openAi[0]?.id || "");
+    setOpenAiReasoningEffort(
+      (current) =>
+        current
+        || config.models.defaults.openAiReasoningEffort
+        || config.models.openAiReasoning[0]?.id
+        || "",
+    );
     setAnthropicModel(
       (current) =>
         current
         || config.models.defaults.anthropic
         || config.models.anthropic[0]?.id
+        || "",
+    );
+    setAnthropicReasoningEffort(
+      (current) =>
+        current
+        || config.models.defaults.anthropicReasoningEffort
+        || config.models.anthropicReasoning[0]?.id
         || "",
     );
   }, [config, selectedThreadId]);
@@ -136,7 +152,14 @@ export function useWorkspace(enabled: boolean) {
         setRepo("");
         setBaseBranch("");
         setTargetBranch("");
-        applyModels(threadDetail.thread.models, config, setOpenAiModel, setAnthropicModel);
+        applyModels(
+          threadDetail.thread.models,
+          config,
+          setOpenAiModel,
+          setOpenAiReasoningEffort,
+          setAnthropicModel,
+          setAnthropicReasoningEffort,
+        );
       }
 
       return;
@@ -157,7 +180,14 @@ export function useWorkspace(enabled: boolean) {
         ?? threadDetail.thread.repository.defaultBranch
         ?? "",
     );
-    applyModels(threadDetail.thread.models, config, setOpenAiModel, setAnthropicModel);
+    applyModels(
+      threadDetail.thread.models,
+      config,
+      setOpenAiModel,
+      setOpenAiReasoningEffort,
+      setAnthropicModel,
+      setAnthropicReasoningEffort,
+    );
   }, [config, threadDetail?.thread.id]);
 
   useEffect(() => {
@@ -241,7 +271,17 @@ export function useWorkspace(enabled: boolean) {
     setBaseBranch("");
     setTargetBranch("");
     setOpenAiModel(config?.models.defaults.openAi ?? config?.models.openAi[0]?.id ?? "");
+    setOpenAiReasoningEffort(
+      config?.models.defaults.openAiReasoningEffort
+      ?? config?.models.openAiReasoning[0]?.id
+      ?? "",
+    );
     setAnthropicModel(config?.models.defaults.anthropic ?? config?.models.anthropic[0]?.id ?? "");
+    setAnthropicReasoningEffort(
+      config?.models.defaults.anthropicReasoningEffort
+      ?? config?.models.anthropicReasoning[0]?.id
+      ?? "",
+    );
     setStatusMessage("Starting a new thread.");
   }
 
@@ -261,7 +301,12 @@ export function useWorkspace(enabled: boolean) {
       const input = {
         text: draft.trim(),
         repository: buildRepositoryTarget(connectorId, owner, repo, baseBranch, targetBranch),
-        models: buildModelSelection(openAiModel, anthropicModel),
+        models: buildModelSelection(
+          openAiModel,
+          openAiReasoningEffort,
+          anthropicModel,
+          anthropicReasoningEffort,
+        ),
       };
 
       const detail = selectedThreadId
@@ -557,6 +602,7 @@ export function useWorkspace(enabled: boolean) {
   return {
     activeThread,
     anthropicModel,
+    anthropicReasoningEffort,
     connectorBranches,
     connectorId,
     connectorRepositories,
@@ -577,6 +623,7 @@ export function useWorkspace(enabled: boolean) {
     latestAssistantMessage,
     owner,
     openAiModel,
+    openAiReasoningEffort,
     manageConnectors,
     repo,
     refreshConnectorStatuses,
@@ -587,8 +634,10 @@ export function useWorkspace(enabled: boolean) {
     setConnectorId: handleConnectorChange,
     setDraft,
     setOpenAiModel,
+    setOpenAiReasoningEffort,
     setOwner,
     setRepo,
+    setAnthropicReasoningEffort,
     setTargetBranch,
     setSelectedThreadId,
     stageMessages,
@@ -609,21 +658,32 @@ export type StageMessage = ThreadMessage;
 
 function buildModelSelection(
   openAi: string,
+  openAiReasoningEffort: string,
   anthropic: string,
+  anthropicReasoningEffort: string,
 ): ModelSelection | undefined {
   const nextSelection: ModelSelection = {
     openAi: openAi.trim() || undefined,
+    openAiReasoningEffort: openAiReasoningEffort.trim() || undefined,
     anthropic: anthropic.trim() || undefined,
+    anthropicReasoningEffort: anthropicReasoningEffort.trim() || undefined,
   };
 
-  return nextSelection.openAi || nextSelection.anthropic ? nextSelection : undefined;
+  return nextSelection.openAi
+    || nextSelection.openAiReasoningEffort
+    || nextSelection.anthropic
+    || nextSelection.anthropicReasoningEffort
+    ? nextSelection
+    : undefined;
 }
 
 function applyModels(
   selection: ModelSelection | undefined,
   config: AppConfigResponse | undefined,
   setOpenAiModel: (value: string) => void,
+  setOpenAiReasoningEffort: (value: string) => void,
   setAnthropicModel: (value: string) => void,
+  setAnthropicReasoningEffort: (value: string) => void,
 ) {
   setOpenAiModel(
     selection?.openAi
@@ -631,10 +691,22 @@ function applyModels(
       ?? config?.models.openAi[0]?.id
       ?? "",
   );
+  setOpenAiReasoningEffort(
+    selection?.openAiReasoningEffort
+      ?? config?.models.defaults.openAiReasoningEffort
+      ?? config?.models.openAiReasoning[0]?.id
+      ?? "",
+  );
   setAnthropicModel(
     selection?.anthropic
       ?? config?.models.defaults.anthropic
       ?? config?.models.anthropic[0]?.id
+      ?? "",
+  );
+  setAnthropicReasoningEffort(
+    selection?.anthropicReasoningEffort
+      ?? config?.models.defaults.anthropicReasoningEffort
+      ?? config?.models.anthropicReasoning[0]?.id
       ?? "",
   );
 }

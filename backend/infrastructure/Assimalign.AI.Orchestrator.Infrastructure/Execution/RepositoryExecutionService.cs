@@ -5,6 +5,7 @@ using Assimalign.AI.Orchestrator.Application.Abstractions.Execution;
 using Assimalign.AI.Orchestrator.Application.Abstractions.Providers;
 using Assimalign.AI.Orchestrator.Application.Configuration;
 using Assimalign.AI.Orchestrator.Core.Models;
+using Assimalign.AI.Orchestrator.Core.Prompts;
 using Assimalign.AI.Orchestrator.Infrastructure.Integrations.GitHub;
 
 namespace Assimalign.AI.Orchestrator.Infrastructure.Execution;
@@ -17,6 +18,67 @@ public sealed class RepositoryExecutionService(
     private const int MaxRepositoryTreeEntries = 500;
     private const int MaxSelectedFiles = 12;
     private const int MaxFileContentCharacters = 40_000;
+
+    public async Task<RepositoryInspectionResult> InspectAsync(
+        ConversationInput input,
+        RepositoryTarget repository,
+        OrchestrationResult orchestration,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(repository);
+
+        if (string.IsNullOrWhiteSpace(repository.Owner) || string.IsNullOrWhiteSpace(repository.Repo))
+        {
+            throw new InvalidOperationException("A repository owner and name are required before inspection can start.");
+        }
+
+        var accessToken = await gitHubContextService.GetAccessTokenForRepositoryOperationsAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            throw new InvalidOperationException("GitHub credentials are not configured, so repository inspection cannot clone the repository.");
+        }
+
+        Directory.CreateDirectory(settings.RepositoryWorkspaceRoot);
+
+        var workspacePath = Path.Combine(
+            settings.RepositoryWorkspaceRoot,
+            $"{repository.Owner}-{repository.Repo}-inspect-{Guid.NewGuid():N}");
+
+        try
+        {
+            await CloneRepositoryForInspectionAsync(repository, accessToken, workspacePath, cancellationToken);
+
+            var repositoryTree = await BuildRepositoryTreeAsync(workspacePath, cancellationToken);
+            var inspectionContext = await openAiClient.GenerateStructuredAsync<RepositoryInspectionContextArtifact>(
+                BuildInspectionContextRequest(input, orchestration, repositoryTree, threadHistory),
+                cancellationToken);
+
+            var selectedFiles = NormalizeSelectedFiles(inspectionContext.SelectedFiles);
+            var fileContents = LoadSelectedFileContents(workspacePath, selectedFiles);
+            var summary = await openAiClient.GenerateTextAsync(
+                BuildInspectionSummaryRequest(
+                    input,
+                    orchestration,
+                    inspectionContext,
+                    repositoryTree,
+                    fileContents,
+                    threadHistory),
+                cancellationToken);
+
+            return new RepositoryInspectionResult
+            {
+                Repository = CloneRepository(repository),
+                Summary = summary.Trim(),
+                SelectedFiles = fileContents.Keys.ToArray(),
+            };
+        }
+        finally
+        {
+            TryDeleteWorkspace(workspacePath);
+        }
+    }
 
     public async Task<RepositoryExecutionResult> ExecuteAsync(
         ConversationInput input,
@@ -57,26 +119,26 @@ public sealed class RepositoryExecutionService(
 
             var repositoryTree = await BuildRepositoryTreeAsync(workspacePath, cancellationToken);
             var executionEnvironment = BuildExecutionEnvironmentDescription();
-            var executionContext = await openAiClient.CreateExecutionContextAsync(
-                input.Text,
-                orchestration,
-                repositoryTree,
-                executionEnvironment,
-                threadHistory,
-                input.Models?.OpenAi,
+            var executionContext = await openAiClient.GenerateStructuredAsync<RepositoryExecutionContextArtifact>(
+                BuildExecutionContextRequest(
+                    input,
+                    orchestration,
+                    repositoryTree,
+                    executionEnvironment,
+                    threadHistory),
                 cancellationToken);
 
             var selectedFiles = NormalizeSelectedFiles(executionContext.SelectedFiles);
             var fileContents = LoadSelectedFileContents(workspacePath, selectedFiles);
-            var executionArtifact = await openAiClient.CreateExecutionArtifactAsync(
-                input.Text,
-                orchestration,
-                executionContext,
-                repositoryTree,
-                executionEnvironment,
-                fileContents,
-                threadHistory,
-                input.Models?.OpenAi,
+            var executionArtifact = await openAiClient.GenerateStructuredAsync<RepositoryExecutionArtifact>(
+                BuildExecutionArtifactRequest(
+                    input,
+                    orchestration,
+                    executionContext,
+                    repositoryTree,
+                    executionEnvironment,
+                    fileContents,
+                    threadHistory),
                 cancellationToken);
 
             var normalizedArtifact = NormalizeExecutionArtifact(executionContext, executionArtifact);
@@ -143,6 +205,32 @@ public sealed class RepositoryExecutionService(
         {
             TryDeleteWorkspace(workspacePath);
         }
+    }
+
+    private async Task CloneRepositoryForInspectionAsync(
+        RepositoryTarget repository,
+        string accessToken,
+        string workspacePath,
+        CancellationToken cancellationToken)
+    {
+        var branch = repository.WorkingBranch
+            ?? repository.BaseBranch
+            ?? repository.TargetBranch
+            ?? repository.DefaultBranch
+            ?? repository.Branch
+            ?? "main";
+        var cloneUrl =
+            $"https://x-access-token:{Uri.EscapeDataString(accessToken)}@github.com/{repository.Owner}/{repository.Repo}.git";
+
+        await RunGitAsync(
+            settings.RepositoryWorkspaceRoot,
+            cancellationToken,
+            "clone",
+            "--branch",
+            branch,
+            "--single-branch",
+            cloneUrl,
+            workspacePath);
     }
 
     private async Task CloneRepositoryAsync(
@@ -249,6 +337,91 @@ public sealed class RepositoryExecutionService(
         return string.Join(Environment.NewLine, lines);
     }
 
+    private static string BuildExecutionContextText(
+        string repositoryTree,
+        string executionEnvironment)
+    {
+        return string.Join(
+            Environment.NewLine,
+            [
+                "Execution environment:",
+                executionEnvironment,
+                string.Empty,
+                "Repository tree:",
+                repositoryTree,
+            ]);
+    }
+
+    private static string BuildInspectionSummaryText(
+        RepositoryInspectionContextArtifact inspectionContext,
+        string repositoryTree,
+        IReadOnlyDictionary<string, string> fileContents)
+    {
+        var lines = new List<string>
+        {
+            "Inspection context:",
+            System.Text.Json.JsonSerializer.Serialize(inspectionContext),
+            string.Empty,
+            "Repository tree:",
+            repositoryTree,
+            string.Empty,
+            "Selected file contents:",
+        };
+
+        if (fileContents.Count == 0)
+        {
+            lines.Add("No file contents were provided.");
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        foreach (var entry in fileContents)
+        {
+            lines.Add($"--- FILE: {entry.Key} ---");
+            lines.Add(entry.Value);
+            lines.Add($"--- END FILE: {entry.Key} ---");
+            lines.Add(string.Empty);
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildExecutionArtifactText(
+        RepositoryExecutionContextArtifact executionContext,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyDictionary<string, string> fileContents)
+    {
+        var lines = new List<string>
+        {
+            "Execution environment:",
+            executionEnvironment,
+            string.Empty,
+            "Execution context:",
+            System.Text.Json.JsonSerializer.Serialize(executionContext),
+            string.Empty,
+            "Repository tree:",
+            repositoryTree,
+            string.Empty,
+            "Selected file contents:",
+        };
+
+        if (fileContents.Count == 0)
+        {
+            lines.Add("No file contents were provided.");
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        foreach (var entry in fileContents)
+        {
+            lines.Add($"--- FILE: {entry.Key} ---");
+            lines.Add(entry.Value);
+            lines.Add($"--- END FILE: {entry.Key} ---");
+            lines.Add(string.Empty);
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
     private IReadOnlyDictionary<string, string> LoadSelectedFileContents(
         string workspacePath,
         IReadOnlyList<string> selectedFiles)
@@ -305,6 +478,97 @@ public sealed class RepositoryExecutionService(
         artifact.Changes = NormalizeChanges(artifact.Changes);
         return artifact;
     }
+
+    private static ProviderPromptRequest BuildInspectionContextRequest(
+        ConversationInput input,
+        OrchestrationResult orchestration,
+        string repositoryTree,
+        IReadOnlyList<ThreadMessage>? threadHistory) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.InspectionContextSystemPrompt,
+            Requirement = input.Text,
+            Context = orchestration.Context,
+            ThreadHistory = threadHistory,
+            Plan = orchestration.Plan,
+            Review = orchestration.Review,
+            Debate = orchestration.Debate,
+            AdditionalContext = string.Join(
+                Environment.NewLine,
+                [
+                    "Repository tree:",
+                    repositoryTree,
+                ]),
+            ModelOverride = input.Models?.OpenAi,
+            ReasoningEffort = input.Models?.OpenAiReasoningEffort ?? "medium",
+        };
+
+    private static ProviderPromptRequest BuildInspectionSummaryRequest(
+        ConversationInput input,
+        OrchestrationResult orchestration,
+        RepositoryInspectionContextArtifact inspectionContext,
+        string repositoryTree,
+        IReadOnlyDictionary<string, string> fileContents,
+        IReadOnlyList<ThreadMessage>? threadHistory) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.InspectionSummarySystemPrompt,
+            Requirement = input.Text,
+            Context = orchestration.Context,
+            ThreadHistory = threadHistory,
+            Plan = orchestration.Plan,
+            Review = orchestration.Review,
+            Debate = orchestration.Debate,
+            AdditionalContext = BuildInspectionSummaryText(inspectionContext, repositoryTree, fileContents),
+            ModelOverride = input.Models?.OpenAi,
+            ReasoningEffort = input.Models?.OpenAiReasoningEffort ?? "medium",
+        };
+
+    private static ProviderPromptRequest BuildExecutionContextRequest(
+        ConversationInput input,
+        OrchestrationResult orchestration,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyList<ThreadMessage>? threadHistory) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.ExecutionContextSystemPrompt,
+            Requirement = input.Text,
+            Context = orchestration.Context,
+            ThreadHistory = threadHistory,
+            Plan = orchestration.Plan,
+            Review = orchestration.Review,
+            Debate = orchestration.Debate,
+            AdditionalContext = BuildExecutionContextText(repositoryTree, executionEnvironment),
+            ModelOverride = input.Models?.OpenAi,
+            ReasoningEffort = input.Models?.OpenAiReasoningEffort ?? "medium",
+        };
+
+    private static ProviderPromptRequest BuildExecutionArtifactRequest(
+        ConversationInput input,
+        OrchestrationResult orchestration,
+        RepositoryExecutionContextArtifact executionContext,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyDictionary<string, string> fileContents,
+        IReadOnlyList<ThreadMessage>? threadHistory) =>
+        new()
+        {
+            SystemPrompt = PromptLibrary.ExecutionPatchSystemPrompt,
+            Requirement = input.Text,
+            Context = orchestration.Context,
+            ThreadHistory = threadHistory,
+            Plan = orchestration.Plan,
+            Review = orchestration.Review,
+            Debate = orchestration.Debate,
+            AdditionalContext = BuildExecutionArtifactText(
+                executionContext,
+                repositoryTree,
+                executionEnvironment,
+                fileContents),
+            ModelOverride = input.Models?.OpenAi,
+            ReasoningEffort = input.Models?.OpenAiReasoningEffort ?? "high",
+        };
 
     private static List<string> NormalizeCommands(IEnumerable<string>? commands) =>
         (commands ?? [])

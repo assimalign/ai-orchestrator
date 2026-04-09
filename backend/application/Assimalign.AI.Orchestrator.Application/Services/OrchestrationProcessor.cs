@@ -55,7 +55,7 @@ public sealed class OrchestrationProcessor(
             thread.LastMessagePreview = BuildPreview(result.Summary);
             thread.Error = null;
 
-            if (thread.Repository is not null && result.Plan.RequiresImplementation)
+            if (thread.Repository is not null && result.Plan.RequiresImplementation && !result.NeedsUserDecision)
             {
                 await PrepareWorkingBranchAsync(
                     thread,
@@ -75,6 +75,18 @@ public sealed class OrchestrationProcessor(
                     thread.Summary = executionResult.Summary;
                     thread.LastMessagePreview = BuildPreview(executionResult.Summary);
                 }
+            }
+            else if (thread.Repository is not null && ShouldInspectRepository(result.Plan, sourceMessage.Content))
+            {
+                var inspectionResult = await InspectRepositoryAsync(
+                    thread,
+                    sourceMessage,
+                    threadHistory,
+                    result,
+                    cancellationToken);
+
+                thread.Summary = inspectionResult.Summary;
+                thread.LastMessagePreview = BuildPreview(inspectionResult.Summary);
             }
 
             thread.Status = ThreadStageStatus.Completed;
@@ -125,6 +137,78 @@ public sealed class OrchestrationProcessor(
     {
         var normalized = text.ReplaceLineEndings(" ").Trim();
         return normalized.Length <= 120 ? normalized : $"{normalized[..117]}...";
+    }
+
+    private static bool ShouldInspectRepository(
+        PlanningArtifact plan,
+        string messageContent)
+    {
+        if (plan.RequiresImplementation || plan.RequiresRepositoryAccess)
+        {
+            return !plan.RequiresImplementation;
+        }
+
+        var normalized = messageContent.ToLowerInvariant();
+        return normalized.Contains("review")
+            || normalized.Contains("inspect")
+            || normalized.Contains("summar")
+            || normalized.Contains("synops")
+            || normalized.Contains("structure")
+            || normalized.Contains("walk me through")
+            || normalized.Contains("look through")
+            || normalized.Contains("read through")
+            || normalized.Contains("understand the repo")
+            || normalized.Contains("understand the codebase");
+    }
+
+    private async Task<RepositoryInspectionResult> InspectRepositoryAsync(
+        ConversationThread thread,
+        ThreadMessage sourceMessage,
+        IReadOnlyList<ThreadMessage> threadHistory,
+        OrchestrationResult result,
+        CancellationToken cancellationToken)
+    {
+        await repository.AddMessageAsync(
+            new ThreadMessage
+            {
+                Id = Guid.NewGuid().ToString("D"),
+                ThreadId = thread.Id,
+                Role = ThreadMessageRole.Stage,
+                Stage = ThreadStageStatus.Synthesizing,
+                Title = "Repository inspection started",
+                Content = "Codex is cloning the selected repository and reading the relevant files for a synopsis.",
+                Provider = "codex",
+                CreatedAt = DateTimeOffset.UtcNow,
+            },
+            cancellationToken);
+
+        var inspectionResult = await repositoryExecutionService.InspectAsync(
+            new ConversationInput
+            {
+                Text = sourceMessage.Content,
+                Models = thread.Models,
+                Repository = thread.Repository,
+            },
+            thread.Repository!,
+            result,
+            threadHistory,
+            cancellationToken);
+
+        await repository.AddMessageAsync(
+            new ThreadMessage
+            {
+                Id = Guid.NewGuid().ToString("D"),
+                ThreadId = thread.Id,
+                Role = ThreadMessageRole.Stage,
+                Stage = ThreadStageStatus.Completed,
+                Title = "Repository inspection completed",
+                Content = BuildInspectionMessage(inspectionResult),
+                Provider = "codex",
+                CreatedAt = DateTimeOffset.UtcNow,
+            },
+            cancellationToken);
+
+        return inspectionResult;
     }
 
     private async Task<RepositoryExecutionResult> ExecuteRepositoryChangesAsync(
@@ -267,6 +351,21 @@ public sealed class OrchestrationProcessor(
         if (!string.IsNullOrWhiteSpace(executionResult.Repository.CompareUrl))
         {
             lines.Add($"Review: {executionResult.Repository.CompareUrl}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildInspectionMessage(RepositoryInspectionResult inspectionResult)
+    {
+        var lines = new List<string>
+        {
+            $"Repository: {inspectionResult.Repository.Owner}/{inspectionResult.Repository.Repo}",
+        };
+
+        if (inspectionResult.SelectedFiles.Count > 0)
+        {
+            lines.Add($"Inspected files: {string.Join(", ", inspectionResult.SelectedFiles)}");
         }
 
         return string.Join(Environment.NewLine, lines);

@@ -77,7 +77,9 @@ export interface ProviderAvailability {
 
 export interface ModelSelection {
   openAi?: string;
+  openAiReasoningEffort?: string;
   anthropic?: string;
+  anthropicReasoningEffort?: string;
 }
 
 export interface ModelOption {
@@ -88,6 +90,8 @@ export interface ModelOption {
 export interface ModelCatalog {
   openAi: ModelOption[];
   anthropic: ModelOption[];
+  openAiReasoning: ModelOption[];
+  anthropicReasoning: ModelOption[];
   defaults: ModelSelection;
 }
 

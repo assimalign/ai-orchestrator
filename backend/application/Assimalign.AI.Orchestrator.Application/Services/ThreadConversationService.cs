@@ -208,11 +208,19 @@ public sealed class ThreadConversationService(
         var prepared = new ModelSelection
         {
             OpenAi = string.IsNullOrWhiteSpace(models.OpenAi) ? null : models.OpenAi.Trim(),
+            OpenAiReasoningEffort = string.IsNullOrWhiteSpace(models.OpenAiReasoningEffort)
+                ? null
+                : models.OpenAiReasoningEffort.Trim().ToLowerInvariant(),
             Anthropic = string.IsNullOrWhiteSpace(models.Anthropic) ? null : models.Anthropic.Trim(),
+            AnthropicReasoningEffort = string.IsNullOrWhiteSpace(models.AnthropicReasoningEffort)
+                ? null
+                : models.AnthropicReasoningEffort.Trim().ToLowerInvariant(),
         };
 
         return string.IsNullOrWhiteSpace(prepared.OpenAi)
+            && string.IsNullOrWhiteSpace(prepared.OpenAiReasoningEffort)
             && string.IsNullOrWhiteSpace(prepared.Anthropic)
+            && string.IsNullOrWhiteSpace(prepared.AnthropicReasoningEffort)
             ? null
             : prepared;
     }
@@ -260,7 +268,9 @@ public sealed class ThreadConversationService(
         }
 
         existing.OpenAi = prepared.OpenAi ?? existing.OpenAi;
+        existing.OpenAiReasoningEffort = prepared.OpenAiReasoningEffort ?? existing.OpenAiReasoningEffort;
         existing.Anthropic = prepared.Anthropic ?? existing.Anthropic;
+        existing.AnthropicReasoningEffort = prepared.AnthropicReasoningEffort ?? existing.AnthropicReasoningEffort;
         return existing;
     }
 

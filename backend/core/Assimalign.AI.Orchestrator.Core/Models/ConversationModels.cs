@@ -129,7 +129,9 @@ public sealed class ProviderAvailability
 public sealed class ModelSelection
 {
     public string? OpenAi { get; set; }
+    public string? OpenAiReasoningEffort { get; set; }
     public string? Anthropic { get; set; }
+    public string? AnthropicReasoningEffort { get; set; }
 }
 
 public sealed class ModelOption
@@ -142,6 +144,8 @@ public sealed class ModelCatalog
 {
     public IReadOnlyList<ModelOption> OpenAi { get; init; } = [];
     public IReadOnlyList<ModelOption> Anthropic { get; init; } = [];
+    public IReadOnlyList<ModelOption> OpenAiReasoning { get; init; } = [];
+    public IReadOnlyList<ModelOption> AnthropicReasoning { get; init; } = [];
     public ModelSelection Defaults { get; init; } = new();
 }
 
@@ -189,6 +193,7 @@ public sealed class GitHubContextSnapshot
 public sealed class PlanningArtifact
 {
     public string Message { get; set; } = string.Empty;
+    public bool RequiresRepositoryAccess { get; set; }
     public bool RequiresImplementation { get; set; }
     public string? SuggestedBranchName { get; set; }
 }
@@ -196,6 +201,44 @@ public sealed class PlanningArtifact
 public sealed class ReviewArtifact
 {
     public string Message { get; set; } = string.Empty;
+    public bool IsAligned { get; set; }
+    public bool NeedsUserDecision { get; set; }
+    public string? UserDecisionPrompt { get; set; }
+}
+
+public sealed class DebateArtifact
+{
+    public string Message { get; set; } = string.Empty;
+    public bool IsAligned { get; set; }
+    public bool NeedsUserDecision { get; set; }
+    public string? UserDecisionPrompt { get; set; }
+}
+
+public sealed class ProviderPromptRequest
+{
+    public string SystemPrompt { get; set; } = string.Empty;
+    public string Requirement { get; set; } = string.Empty;
+    public GitHubContextSnapshot? Context { get; set; }
+    public IReadOnlyList<ThreadMessage>? ThreadHistory { get; set; }
+    public PlanningArtifact? Plan { get; set; }
+    public ReviewArtifact? Review { get; set; }
+    public DebateArtifact? Debate { get; set; }
+    public string? AdditionalContext { get; set; }
+    public string? ModelOverride { get; set; }
+    public string? ReasoningEffort { get; set; }
+}
+
+public sealed class RepositoryInspectionContextArtifact
+{
+    public string Message { get; set; } = string.Empty;
+    public List<string> SelectedFiles { get; set; } = [];
+}
+
+public sealed class RepositoryInspectionResult
+{
+    public required RepositoryTarget Repository { get; init; }
+    public required string Summary { get; init; }
+    public IReadOnlyList<string> SelectedFiles { get; init; } = [];
 }
 
 public sealed class RepositoryExecutionContextArtifact
@@ -248,7 +291,9 @@ public sealed class OrchestrationResult
     public RepositoryTarget? Repository { get; set; }
     public required PlanningArtifact Plan { get; init; }
     public required ReviewArtifact Review { get; init; }
+    public DebateArtifact? Debate { get; init; }
     public required string Summary { get; init; }
+    public bool NeedsUserDecision { get; init; }
 }
 
 public sealed class StageUpdate
