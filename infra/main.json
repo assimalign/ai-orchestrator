@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14237877114475760718"
+      "templateHash": "14512748274041591413"
     }
   },
   "parameters": {
@@ -603,7 +603,7 @@
             "value": 8080
           },
           "minReplicas": {
-            "value": 0
+            "value": 1
           },
           "maxReplicas": {
             "value": 5
@@ -628,6 +628,10 @@
           },
           "env": {
             "value": [
+              {
+                "name": "EXECUTION_MODE",
+                "value": "servicebus"
+              },
               {
                 "name": "ORCHESTRATOR_TABLE_NAME",
                 "value": "orchestratorstate"

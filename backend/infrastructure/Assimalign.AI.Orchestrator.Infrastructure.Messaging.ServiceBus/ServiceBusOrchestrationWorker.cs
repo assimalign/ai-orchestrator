@@ -15,6 +15,10 @@ public sealed class ServiceBusOrchestrationWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        logger.LogInformation(
+            "Starting Service Bus worker for queue {QueueName}.",
+            runtime.Settings.ServiceBusQueueName);
+
         processor = serviceBusClient.CreateProcessor(runtime.Settings.ServiceBusQueueName);
 
         processor.ProcessErrorAsync += args =>
@@ -56,6 +60,9 @@ public sealed class ServiceBusOrchestrationWorker(
         };
 
         await processor.StartProcessingAsync(stoppingToken);
+        logger.LogInformation(
+            "Service Bus worker is listening for queue {QueueName}.",
+            runtime.Settings.ServiceBusQueueName);
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 

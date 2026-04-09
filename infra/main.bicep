@@ -303,7 +303,7 @@ module workerContainerApp 'modules/container-app.bicep' = {
     ingressEnabled: false
     ingressExternal: false
     targetPort: 8080
-    minReplicas: 0
+    minReplicas: 1
     maxReplicas: 5
     cpu: '0.75'
     memory: '1.5Gi'
@@ -318,6 +318,10 @@ module workerContainerApp 'modules/container-app.bicep' = {
       }
     ]
     env: [
+      {
+        name: 'EXECUTION_MODE'
+        value: 'servicebus'
+      }
       {
         name: 'ORCHESTRATOR_TABLE_NAME'
         value: 'orchestratorstate'
