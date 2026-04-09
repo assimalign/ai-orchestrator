@@ -7,6 +7,8 @@ type StageRailProps = {
 };
 
 export function StageRail({ activeStatus, messages }: StageRailProps) {
+  const liveStage = activeStatus ? getLiveStage(activeStatus) : undefined;
+
   return (
     <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/[0.045] p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -23,6 +25,18 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
         </div>
         <StatusPill status={activeStatus ?? "queued"} />
       </div>
+
+      {liveStage ? (
+        <div className="mt-5 flex items-center justify-between gap-4 rounded-3xl border border-sage-300/15 bg-sage-300/8 px-4 py-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
+              {liveStage.provider}
+            </p>
+            <p className="mt-1 text-sm text-slate-200">{liveStage.message}</p>
+          </div>
+          <ThinkingDots />
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-3 xl:grid-cols-4">
         {messages.length ? (
@@ -123,4 +137,36 @@ function truncate(value: string, limit: number) {
   return normalized.length <= limit
     ? normalized
     : `${normalized.slice(0, limit - 3)}...`;
+}
+
+function getLiveStage(status: ThreadStageStatus) {
+  switch (status) {
+    case "planning":
+      return {
+        provider: "Codex",
+        message: "Codex is thinking through the first pass.",
+      };
+    case "reviewing":
+      return {
+        provider: "Claude",
+        message: "Claude is reviewing the approach and pushing on gaps.",
+      };
+    case "synthesizing":
+      return {
+        provider: "Codex",
+        message: "Codex is pulling the debate back into one answer.",
+      };
+    default:
+      return undefined;
+  }
+}
+
+function ThinkingDots() {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="h-2.5 w-2.5 rounded-full bg-sage-300/80 animate-pulse [animation-delay:0ms]" />
+      <span className="h-2.5 w-2.5 rounded-full bg-sage-300/65 animate-pulse [animation-delay:180ms]" />
+      <span className="h-2.5 w-2.5 rounded-full bg-sage-300/50 animate-pulse [animation-delay:360ms]" />
+    </div>
+  );
 }

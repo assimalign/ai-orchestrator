@@ -39,7 +39,9 @@ public sealed class OrchestratorSettings
     public string GitHubAppPrivateKeySecretName { get; init; } = "github-app-private-key";
     public string RepositoryWorkspaceRoot { get; init; } =
         Path.Combine(Path.GetTempPath(), "assimalign-ai-orchestrator", "workspaces");
+    public int ProviderHttpTimeoutSeconds { get; init; } = 900;
     public int RepositoryCommandTimeoutSeconds { get; init; } = 900;
+    public int SpeechHttpTimeoutSeconds { get; init; } = 15;
     public string GitCommitUserName { get; init; } = "Assimalign AI Orchestrator";
     public string GitCommitUserEmail { get; init; } = "orchestrator@assimalign.local";
     public string? EntraTenantId { get; init; }
@@ -155,8 +157,12 @@ public sealed class OrchestratorSettings
             RepositoryWorkspaceRoot =
                 configuration["REPOSITORY_WORKSPACE_ROOT"]
                 ?? Path.Combine(Path.GetTempPath(), "assimalign-ai-orchestrator", "workspaces"),
+            ProviderHttpTimeoutSeconds =
+                configuration.GetValue("PROVIDER_HTTP_TIMEOUT_SECONDS", 900),
             RepositoryCommandTimeoutSeconds =
                 configuration.GetValue("REPOSITORY_COMMAND_TIMEOUT_SECONDS", 900),
+            SpeechHttpTimeoutSeconds =
+                configuration.GetValue("SPEECH_HTTP_TIMEOUT_SECONDS", 15),
             GitCommitUserName =
                 configuration["GIT_COMMIT_USER_NAME"] ?? "Assimalign AI Orchestrator",
             GitCommitUserEmail =

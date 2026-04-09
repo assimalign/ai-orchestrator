@@ -54,7 +54,14 @@ public static class OrchestratorRuntimeFactory
             ? new ServiceBusOrchestrationQueue(settings.ServiceBusConnectionString, settings.ServiceBusQueueName)
             : null;
 
-        var providerHttpClient = new HttpClient();
+        var providerHttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(settings.ProviderHttpTimeoutSeconds),
+        };
+        var speechHttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(settings.SpeechHttpTimeoutSeconds),
+        };
         var githubContextService = new GitHubContextService(settings, secretProvider);
         var openAiClient =
             !string.IsNullOrWhiteSpace(openAiApiKey)
@@ -85,7 +92,7 @@ public static class OrchestratorRuntimeFactory
             githubContextService,
             queue,
             processInline: !settings.UsesServiceBus);
-        var speechTokenService = new SpeechTokenService(providerHttpClient, settings, secretProvider);
+        var speechTokenService = new SpeechTokenService(speechHttpClient, settings, secretProvider);
 
         return new OrchestratorRuntime
         {
