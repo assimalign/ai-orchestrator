@@ -15,7 +15,7 @@ if (!settings.UsesServiceBus || string.IsNullOrWhiteSpace(settings.ServiceBusCon
 builder.Services.AddAssimalignAiOrchestratorTelemetry(
     builder.Configuration,
     "Assimalign.AI.Orchestrator.Worker");
-builder.Services.AddAssimalignAiOrchestratorRuntime(settings);
+builder.Services.AddAssimalignAiOrchestratorRuntimeHandle(settings);
 builder.Services.AddAssimalignAiOrchestratorServiceBusProcessing(settings);
 
 var host = builder.Build();

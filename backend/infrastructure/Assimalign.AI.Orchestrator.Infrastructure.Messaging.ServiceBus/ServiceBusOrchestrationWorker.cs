@@ -9,12 +9,38 @@ namespace Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus;
 public sealed class ServiceBusOrchestrationWorker(
     ILogger<ServiceBusOrchestrationWorker> logger,
     ServiceBusClient serviceBusClient,
-    OrchestratorRuntime runtime) : BackgroundService
+    OrchestratorRuntimeHandle runtimeHandle) : BackgroundService
 {
     private ServiceBusProcessor? processor;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        OrchestratorRuntime? runtime = null;
+
+        while (!stoppingToken.IsCancellationRequested && runtime is null)
+        {
+            try
+            {
+                runtime = await runtimeHandle.GetRuntimeAsync(
+                    stoppingToken,
+                    TimeSpan.FromSeconds(30));
+            }
+            catch (Exception error) when (!stoppingToken.IsCancellationRequested)
+            {
+                logger.LogError(
+                    error,
+                    "Worker runtime initialization failed. Retrying in 15 seconds.");
+
+                await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+            }
+        }
+
+        if (runtime is null)
+        {
+            logger.LogWarning("Worker runtime initialization was canceled before the processor started.");
+            return;
+        }
+
         logger.LogInformation(
             "Starting Service Bus worker for queue {QueueName}.",
             runtime.Settings.ServiceBusQueueName);
