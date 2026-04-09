@@ -46,9 +46,12 @@ export function WorkspacePage() {
           <ComposerPanel
             anthropicModel={workspace.anthropicModel}
             baseBranch={workspace.baseBranch}
+            connectorId={workspace.connectorId}
+            connectorRepositories={workspace.connectorRepositories}
             config={workspace.config}
             draft={workspace.draft}
             hasActiveThread={Boolean(workspace.selectedThreadId)}
+            isLoadingRepositories={workspace.isLoadingRepositories}
             isListening={workspace.isListening}
             isSending={workspace.isSending}
             isSpeaking={workspace.isSpeaking}
@@ -56,10 +59,11 @@ export function WorkspacePage() {
             onAnthropicModelChange={workspace.setAnthropicModel}
             onBaseBranchChange={workspace.setBaseBranch}
             onCaptureSpeech={workspace.captureSpeech}
+            onConnectorChange={workspace.setConnectorId}
             onDraftChange={workspace.setDraft}
+            onManageConnectors={workspace.manageConnectors}
             onOpenAiModelChange={workspace.setOpenAiModel}
-            onOwnerChange={workspace.setOwner}
-            onRepoChange={workspace.setRepo}
+            onRepositorySelect={workspace.selectRepository}
             onSpeakLatestResponse={workspace.speakLatestResponse}
             onSubmit={workspace.submitMessage}
             onTargetBranchChange={workspace.setTargetBranch}

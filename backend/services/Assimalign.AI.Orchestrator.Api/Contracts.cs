@@ -9,6 +9,7 @@ public sealed class AppConfigResponse
     public string SpeechVoice { get; init; } = string.Empty;
     public ProviderAvailability Providers { get; init; } = new();
     public ModelCatalog Models { get; init; } = new();
+    public IReadOnlyList<ConnectorDefinition> Connectors { get; init; } = [];
 }
 
 public sealed class GitHubContextQuery
@@ -26,6 +27,7 @@ public sealed class GitHubContextQuery
     {
         return new RepositoryTarget
         {
+            Connector = "github",
             Owner = Owner,
             Repo = Repo,
             Branch = Branch,

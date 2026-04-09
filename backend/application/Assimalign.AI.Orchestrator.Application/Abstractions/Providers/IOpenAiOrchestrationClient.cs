@@ -31,4 +31,24 @@ public interface IOpenAiOrchestrationClient
         IReadOnlyList<ThreadMessage>? threadHistory,
         string? modelOverride = null,
         CancellationToken cancellationToken = default);
+
+    Task<RepositoryExecutionContextArtifact> CreateExecutionContextAsync(
+        string requirement,
+        OrchestrationResult orchestration,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        string? modelOverride = null,
+        CancellationToken cancellationToken = default);
+
+    Task<RepositoryExecutionArtifact> CreateExecutionArtifactAsync(
+        string requirement,
+        OrchestrationResult orchestration,
+        RepositoryExecutionContextArtifact executionContext,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyDictionary<string, string> fileContents,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        string? modelOverride = null,
+        CancellationToken cancellationToken = default);
 }

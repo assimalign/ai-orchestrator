@@ -1,0 +1,45 @@
+<Solution>
+	<Configurations>
+		<Platform Name="Any CPU" />
+		<Platform Name="x64" />
+		<Platform Name="x86" />
+	</Configurations>
+	<Folder Name="/backend/">
+		<File Path="Directory.Build.props" />
+		<File Path="Directory.Build.targets" />
+	</Folder>
+	<Folder Name="/backend/application/" />
+	<Folder Name="/backend/application/Assimalign.AI.Orchestrator.Application/">
+		<Project Path="application/Assimalign.AI.Orchestrator.Application/Assimalign.AI.Orchestrator.Application.csproj" />
+	</Folder>
+	<Folder Name="/backend/core/" />
+	<Folder Name="/backend/core/Assimalign.AI.Orchestrator.Core/">
+		<Project Path="core/Assimalign.AI.Orchestrator.Core/Assimalign.AI.Orchestrator.Core.csproj" />
+	</Folder>
+	<Folder Name="/backend/infrastructure/" />
+	<Folder Name="/backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure/">
+		<Project Path="infrastructure/Assimalign.AI.Orchestrator.Infrastructure/Assimalign.AI.Orchestrator.Infrastructure.csproj" />
+	</Folder>
+	<Folder Name="/backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging/">
+		<Project Path="infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging/Assimalign.AI.Orchestrator.Infrastructure.Messaging.csproj" />
+	</Folder>
+	<Folder Name="/backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus/">
+		<Project Path="infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus/Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus.csproj" />
+	</Folder>
+	<Folder Name="/backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage/">
+		<Project Path="infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage/Assimalign.AI.Orchestrator.Infrastructure.Storage.csproj" />
+	</Folder>
+	<Folder Name="/backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory/">
+		<Project Path="infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory.csproj" />
+	</Folder>
+	<Folder Name="/backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables/">
+		<Project Path="infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables.csproj" />
+	</Folder>
+	<Folder Name="/backend/services/" />
+	<Folder Name="/backend/services/Assimalign.AI.Orchestrator.Api/">
+		<Project Path="services/Assimalign.AI.Orchestrator.Api/Assimalign.AI.Orchestrator.Api.csproj" />
+	</Folder>
+	<Folder Name="/backend/services/Assimalign.AI.Orchestrator.Worker/">
+		<Project Path="services/Assimalign.AI.Orchestrator.Worker/Assimalign.AI.Orchestrator.Worker.csproj" />
+	</Folder>
+</Solution>

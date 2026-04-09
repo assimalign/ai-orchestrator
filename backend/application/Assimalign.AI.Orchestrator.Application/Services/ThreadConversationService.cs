@@ -190,6 +190,9 @@ public sealed class ThreadConversationService(
             return null;
         }
 
+        repository.Connector = string.IsNullOrWhiteSpace(repository.Connector)
+            ? "github"
+            : repository.Connector.Trim().ToLowerInvariant();
         repository.WorkflowStatus = RepositoryWorkflowStatus.Attached;
         repository.TargetBranch ??= repository.BaseBranch ?? repository.Branch;
         return repository;
@@ -225,6 +228,9 @@ public sealed class ThreadConversationService(
             return PrepareRepositoryTarget(incoming) ?? incoming;
         }
 
+        existing.Connector = string.IsNullOrWhiteSpace(incoming.Connector)
+            ? existing.Connector
+            : incoming.Connector.Trim().ToLowerInvariant();
         existing.Owner = incoming.Owner;
         existing.Repo = incoming.Repo;
         existing.BaseBranch = incoming.BaseBranch ?? existing.BaseBranch ?? existing.TargetBranch ?? existing.Branch;

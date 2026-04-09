@@ -60,6 +60,7 @@ api.MapGet(
                 SpeechVoice = currentRuntime.Settings.SpeechVoice,
                 Providers = currentRuntime.ProviderAvailability,
                 Models = currentRuntime.Settings.BuildModelCatalog(),
+                Connectors = BuildConnectors(currentRuntime.Settings),
             }),
             cancellationToken));
 
@@ -149,6 +150,42 @@ api.MapPost(
             cancellationToken));
 
 api.MapGet(
+    "/connectors",
+    async (CancellationToken cancellationToken) =>
+        await WithRuntime(
+            async currentRuntime => Results.Ok(BuildConnectors(currentRuntime.Settings)),
+            cancellationToken));
+
+api.MapGet(
+    "/connectors/{connectorId}/repositories",
+    async (
+        string connectorId,
+        CancellationToken cancellationToken) =>
+        await WithRuntime(
+            async currentRuntime =>
+            {
+                if (!string.Equals(connectorId, "github", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.NotFound();
+                }
+
+                var repositories = await currentRuntime.GitHubContextService.ListRepositoriesAsync(cancellationToken);
+                return Results.Ok(
+                    repositories.Select(
+                        repository => new ConnectorRepositoryReference
+                        {
+                            ConnectorId = "github",
+                            Owner = repository.Owner,
+                            Repo = repository.Repo,
+                            DefaultBranch = repository.DefaultBranch,
+                            Private = repository.Private,
+                            Description = repository.Description,
+                            Url = repository.Url,
+                        }));
+            },
+            cancellationToken));
+
+api.MapGet(
     "/github/repositories",
     async (CancellationToken cancellationToken) =>
         await WithRuntime(
@@ -212,6 +249,24 @@ async Task<IResult> WithRuntime(
             detail: error.GetBaseException().Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
+}
+
+static IReadOnlyList<ConnectorDefinition> BuildConnectors(OrchestratorSettings settings)
+{
+    return
+    [
+        new ConnectorDefinition
+        {
+            Id = "github",
+            Label = "GitHub",
+            Kind = "repository",
+            Description = "Repository access through a GitHub App installation or runtime token.",
+            Enabled =
+                !string.IsNullOrWhiteSpace(settings.GitHubToken)
+                || (!string.IsNullOrWhiteSpace(settings.GitHubAppId)
+                    && !string.IsNullOrWhiteSpace(settings.GitHubInstallationId)),
+        },
+    ];
 }
 
 app.Run($"http://0.0.0.0:{settings.Port}");

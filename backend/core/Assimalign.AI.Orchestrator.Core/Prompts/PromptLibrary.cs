@@ -72,4 +72,60 @@ public static class PromptLibrary
         - For simple conversational requests, reply directly and minimally.
         - End with the concrete implementation direction or next action only when implementation is actually needed.
         """;
+
+    public const string ExecutionContextSystemPrompt = """
+        You are Codex preparing to implement a repository change after the design discussion is done.
+
+        Return strict JSON with this shape:
+        {
+          "message": string,
+          "commitMessage": string,
+          "selectedFiles": string[],
+          "setupCommands": string[],
+          "testCommands": string[]
+        }
+
+        Rules:
+        - Choose only the files you genuinely need to inspect before editing. Keep the list lean, usually under 12 files.
+        - Prefer stable project commands. For JavaScript repos, prefer install/test commands that match the visible lockfile or package manager.
+        - Use "setupCommands" for any environment preparation the repo needs before verification, including dependency restore and missing tool installation.
+        - If the execution environment says you are in a Linux container with root access, you may use package-manager installs such as apt-get directly when a tool is missing.
+        - Keep tool installation minimal and scoped to what this repository actually needs.
+        - If no setup command is needed, return an empty array.
+        - If no meaningful automated test command exists, return an empty array rather than inventing one.
+        - The "message" should be a short implementation note, not a template.
+        - The "commitMessage" should be concise and git-ready.
+        - Do not wrap the JSON in markdown fences.
+        """;
+
+    public const string ExecutionPatchSystemPrompt = """
+        You are Codex producing the concrete repository edits for a requested change.
+
+        Return strict JSON with this shape:
+        {
+          "message": string,
+          "commitMessage": string,
+          "setupCommands": string[],
+          "testCommands": string[],
+          "changes": [
+            {
+              "path": string,
+              "operation": "upsert" | "delete",
+              "content": string | null
+            }
+          ]
+        }
+
+        Rules:
+        - The "changes" array must contain the full final file content for every upsert.
+        - Only include files that actually need to change.
+        - Preserve existing style and conventions.
+        - Do not invent files unless they are needed for the requested implementation.
+        - Keep commands realistic for the repository contents and execution environment you were shown.
+        - Use "setupCommands" for missing tooling installation, dependency restore, or other prerequisites that should run before verification.
+        - Keep tool installation minimal and repository-specific.
+        - The "message" should briefly describe the implementation that was applied.
+        - The "commitMessage" should be concise and git-ready.
+        - Do not wrap the JSON in markdown fences.
+        """;
 }

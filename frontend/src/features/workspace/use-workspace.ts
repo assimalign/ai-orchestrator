@@ -5,12 +5,15 @@ import {
   getConfig,
   getSpeechToken,
   getThread,
+  listConnectorRepositories,
   listThreads,
   postThreadMessage,
   promoteThread,
 } from "../../lib/api";
 import type {
   AppConfigResponse,
+  ConnectorDefinition,
+  ConnectorRepositoryReference,
   ConversationThread,
   ConversationThreadDetail,
   ModelSelection,
@@ -38,6 +41,8 @@ export function useWorkspace(enabled: boolean) {
   const [threadDetail, setThreadDetail] = useState<ConversationThreadDetail>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>();
   const [draft, setDraft] = useState("");
+  const [connectorId, setConnectorId] = useState("github");
+  const [connectorRepositories, setConnectorRepositories] = useState<ConnectorRepositoryReference[]>([]);
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [baseBranch, setBaseBranch] = useState("");
@@ -45,6 +50,7 @@ export function useWorkspace(enabled: boolean) {
   const [openAiModel, setOpenAiModel] = useState("");
   const [anthropicModel, setAnthropicModel] = useState("");
   const [statusMessage, setStatusMessage] = useState("Preparing your workspace.");
+  const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isPromoting, setIsPromoting] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -101,6 +107,8 @@ export function useWorkspace(enabled: boolean) {
       return;
     }
 
+    const defaultConnector = getDefaultConnector(config.connectors);
+    setConnectorId((current) => current || defaultConnector?.id || "github");
     setOpenAiModel((current) => current || config.models.defaults.openAi || config.models.openAi[0]?.id || "");
     setAnthropicModel(
       (current) =>
@@ -114,6 +122,7 @@ export function useWorkspace(enabled: boolean) {
   useEffect(() => {
     if (!threadDetail?.thread.repository) {
       if (threadDetail?.thread) {
+        setConnectorId(getDefaultConnector(config?.connectors)?.id ?? "github");
         setOwner("");
         setRepo("");
         setBaseBranch("");
@@ -124,6 +133,7 @@ export function useWorkspace(enabled: boolean) {
       return;
     }
 
+    setConnectorId(threadDetail.thread.repository.connector ?? "github");
     setOwner(threadDetail.thread.repository.owner ?? "");
     setRepo(threadDetail.thread.repository.repo ?? "");
     setBaseBranch(
@@ -141,10 +151,29 @@ export function useWorkspace(enabled: boolean) {
     applyModels(threadDetail.thread.models, config, setOpenAiModel, setAnthropicModel);
   }, [config, threadDetail?.thread.id]);
 
+  useEffect(() => {
+    if (!enabled || !config) {
+      return;
+    }
+
+    const connector = resolveConnector(config.connectors, connectorId);
+    if (!connector?.enabled) {
+      setConnectorRepositories([]);
+      return;
+    }
+
+    void loadConnectorRepositories(connector.id, { preserveStatusMessage: true });
+  }, [config, connectorId, enabled]);
+
   async function loadShell() {
     try {
       const [nextConfig] = await Promise.all([getConfig(), refreshThreads()]);
       setConfig(nextConfig);
+      const defaultConnector = getDefaultConnector(nextConfig.connectors);
+      if (defaultConnector) {
+        setConnectorId(defaultConnector.id);
+      }
+
       setStatusMessage("Choose a thread or start a new one.");
     } catch (error) {
       setStatusMessage(formatWorkspaceError(error, "Could not load the orchestrator shell."));
@@ -182,6 +211,7 @@ export function useWorkspace(enabled: boolean) {
     setSelectedThreadId(undefined);
     setThreadDetail(undefined);
     setDraft("");
+    setConnectorId(getDefaultConnector(config?.connectors)?.id ?? "github");
     setOwner("");
     setRepo("");
     setBaseBranch("");
@@ -206,7 +236,7 @@ export function useWorkspace(enabled: boolean) {
     try {
       const input = {
         text: draft.trim(),
-        repository: buildRepositoryTarget(owner, repo, baseBranch, targetBranch),
+        repository: buildRepositoryTarget(connectorId, owner, repo, baseBranch, targetBranch),
         models: buildModelSelection(openAiModel, anthropicModel),
       };
 
@@ -349,12 +379,69 @@ export function useWorkspace(enabled: boolean) {
     }
   }
 
+  function selectRepository(reference: ConnectorRepositoryReference) {
+    setConnectorId(reference.connectorId);
+    setOwner(reference.owner);
+    setRepo(reference.repo);
+    setBaseBranch(reference.defaultBranch || "main");
+    setTargetBranch((current) => current || reference.defaultBranch || "main");
+    setStatusMessage(`Attached ${reference.owner}/${reference.repo} from ${formatConnectorLabel(reference.connectorId)}.`);
+  }
+
+  async function loadConnectorRepositories(
+    nextConnectorId: string,
+    options?: { preserveStatusMessage?: boolean },
+  ) {
+    setIsLoadingRepositories(true);
+
+    try {
+      const repositories = await listConnectorRepositories(nextConnectorId);
+      setConnectorRepositories(repositories);
+
+      if (!options?.preserveStatusMessage) {
+        setStatusMessage(
+          repositories.length > 0
+            ? `Loaded ${repositories.length} repositories from ${formatConnectorLabel(nextConnectorId)}.`
+            : `${formatConnectorLabel(nextConnectorId)} is connected, but no repositories were returned.`,
+        );
+      }
+    } catch (error) {
+      setConnectorRepositories([]);
+      if (!options?.preserveStatusMessage) {
+        setStatusMessage(
+          formatWorkspaceError(
+            error,
+            `Unable to load repositories from ${formatConnectorLabel(nextConnectorId)}.`,
+          ),
+        );
+      }
+    } finally {
+      setIsLoadingRepositories(false);
+    }
+  }
+
+  function handleConnectorChange(nextConnectorId: string) {
+    setConnectorId(nextConnectorId);
+    setOwner("");
+    setRepo("");
+    setBaseBranch("");
+    setTargetBranch("");
+    setStatusMessage(`Switching repository connector to ${formatConnectorLabel(nextConnectorId)}.`);
+  }
+
+  function manageConnectors() {
+    setStatusMessage("Connector management UI is coming next. GitHub is available through the configured app or token.");
+  }
+
   return {
     activeThread,
     anthropicModel,
+    connectorId,
+    connectorRepositories,
     config,
     draft,
     baseBranch,
+    isLoadingRepositories,
     isListening,
     isPromoting,
     isSending,
@@ -362,10 +449,13 @@ export function useWorkspace(enabled: boolean) {
     latestAssistantMessage,
     owner,
     openAiModel,
+    manageConnectors,
     repo,
+    selectRepository,
     selectedThreadId,
     setAnthropicModel,
     setBaseBranch,
+    setConnectorId: handleConnectorChange,
     setDraft,
     setOpenAiModel,
     setOwner,
@@ -432,4 +522,19 @@ function formatWorkspaceError(error: unknown, fallback: string) {
   }
 
   return message;
+}
+
+function getDefaultConnector(connectors?: ConnectorDefinition[]) {
+  return connectors?.find((connector) => connector.enabled) ?? connectors?.[0];
+}
+
+function resolveConnector(
+  connectors: ConnectorDefinition[] | undefined,
+  connectorId: string,
+) {
+  return connectors?.find((connector) => connector.id === connectorId);
+}
+
+function formatConnectorLabel(connectorId: string) {
+  return connectorId === "github" ? "GitHub" : connectorId;
 }

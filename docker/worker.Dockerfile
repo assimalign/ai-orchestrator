@@ -18,8 +18,23 @@ RUN dotnet restore backend/services/Assimalign.AI.Orchestrator.Worker/Assimalign
 COPY . .
 RUN dotnet publish backend/services/Assimalign.AI.Orchestrator.Worker/Assimalign.AI.Orchestrator.Worker.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS runner
 WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git \
+        nodejs \
+        npm \
+        python3 \
+        python3-pip \
+        python3-venv \
+        curl \
+        jq \
+        make \
+        zip \
+        unzip \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/publish .
 

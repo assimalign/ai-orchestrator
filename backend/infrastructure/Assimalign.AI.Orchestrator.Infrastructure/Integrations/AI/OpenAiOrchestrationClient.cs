@@ -80,6 +80,62 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
             cancellationToken);
     }
 
+    public async Task<RepositoryExecutionContextArtifact> CreateExecutionContextAsync(
+        string requirement,
+        OrchestrationResult orchestration,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        string? modelOverride = null,
+        CancellationToken cancellationToken = default)
+    {
+        var responseText = await SendAsync(
+            PromptLibrary.ExecutionContextSystemPrompt,
+            requirement,
+            orchestration.Context,
+            threadHistory,
+            orchestration.Plan,
+            orchestration.Review,
+            orchestration.Summary,
+            "medium",
+            modelOverride,
+            cancellationToken,
+            additionalContext: BuildExecutionContextText(repositoryTree, executionEnvironment));
+
+        return JsonExtraction.ExtractJsonObject<RepositoryExecutionContextArtifact>(responseText);
+    }
+
+    public async Task<RepositoryExecutionArtifact> CreateExecutionArtifactAsync(
+        string requirement,
+        OrchestrationResult orchestration,
+        RepositoryExecutionContextArtifact executionContext,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyDictionary<string, string> fileContents,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        string? modelOverride = null,
+        CancellationToken cancellationToken = default)
+    {
+        var responseText = await SendAsync(
+            PromptLibrary.ExecutionPatchSystemPrompt,
+            requirement,
+            orchestration.Context,
+            threadHistory,
+            orchestration.Plan,
+            orchestration.Review,
+            orchestration.Summary,
+            "high",
+            modelOverride,
+            cancellationToken,
+            additionalContext: BuildExecutionArtifactText(
+                executionContext,
+                repositoryTree,
+                executionEnvironment,
+                fileContents));
+
+        return JsonExtraction.ExtractJsonObject<RepositoryExecutionArtifact>(responseText);
+    }
+
     private async Task<string> SendAsync(
         string instructions,
         string requirement,
@@ -90,7 +146,8 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
         string? codexDebateReply,
         string reasoningEffort,
         string? modelOverride,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? additionalContext = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -110,7 +167,14 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
                             new
                             {
                                 type = "input_text",
-                                text = BuildPromptText(requirement, context, threadHistory, plan, review, codexDebateReply),
+                                text = BuildPromptText(
+                                    requirement,
+                                    context,
+                                    threadHistory,
+                                    plan,
+                                    review,
+                                    codexDebateReply,
+                                    additionalContext),
                             },
                         },
                     },
@@ -137,7 +201,8 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
         IReadOnlyList<ThreadMessage>? threadHistory,
         PlanningArtifact? plan,
         ReviewArtifact? review,
-        string? codexDebateReply)
+        string? codexDebateReply,
+        string? additionalContext)
     {
         var lines = new List<string>
         {
@@ -183,6 +248,64 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
             lines.Add(string.Empty);
             lines.Add("Codex response to Claude:");
             lines.Add(codexDebateReply);
+        }
+
+        if (!string.IsNullOrWhiteSpace(additionalContext))
+        {
+            lines.Add(string.Empty);
+            lines.Add(additionalContext);
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildExecutionContextText(
+        string repositoryTree,
+        string executionEnvironment)
+    {
+        return string.Join(
+            Environment.NewLine,
+            [
+                "Execution environment:",
+                executionEnvironment,
+                string.Empty,
+                "Repository tree:",
+                repositoryTree,
+            ]);
+    }
+
+    private static string BuildExecutionArtifactText(
+        RepositoryExecutionContextArtifact executionContext,
+        string repositoryTree,
+        string executionEnvironment,
+        IReadOnlyDictionary<string, string> fileContents)
+    {
+        var lines = new List<string>
+        {
+            "Execution environment:",
+            executionEnvironment,
+            string.Empty,
+            "Execution context:",
+            JsonExtraction.Serialize(executionContext),
+            string.Empty,
+            "Repository tree:",
+            repositoryTree,
+            string.Empty,
+            "Selected file contents:",
+        };
+
+        if (fileContents.Count == 0)
+        {
+            lines.Add("No file contents were provided.");
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        foreach (var entry in fileContents)
+        {
+            lines.Add($"--- FILE: {entry.Key} ---");
+            lines.Add(entry.Value);
+            lines.Add($"--- END FILE: {entry.Key} ---");
+            lines.Add(string.Empty);
         }
 
         return string.Join(Environment.NewLine, lines);

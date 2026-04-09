@@ -1,6 +1,6 @@
 # AI Dev Orchestrator
 
-`ai-dev-orchestrator` is a GitHub-centered Azure deployment for a protected, thread-based development workspace. The frontend keeps long-lived conversations like Codex and Claude, while the backend runs a staged flow where Codex plans, Claude critiques, and Codex synthesizes the final response with thread history preserved across turns.
+`ai-dev-orchestrator` is a GitHub-centered Azure deployment for a protected, thread-based development workspace. The frontend keeps long-lived conversations like Codex and Claude, exposes connector-backed repository selection, and the backend runs a staged flow where Codex plans, Claude critiques, Codex synthesizes the final response, and implementation requests can clone the attached repository, edit files, run verification, commit, and push onto the thread's working branch.
 
 ## Repo layout
 
@@ -20,6 +20,8 @@ Infrastructure projects follow an abstraction-first pattern. For example:
 - `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory`: in-memory storage implementation
 - `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables`: Azure Tables storage implementation
 - `infra`: Azure Container Apps, Storage, Service Bus, Speech, Log Analytics, App Insights, and Key Vault infrastructure
+
+The connector model starts with GitHub, but the API and UI now treat it as a connector surface so additional repo-capable plugins can be added later without reworking the thread model.
 
 ## Local development
 
@@ -54,6 +56,13 @@ npm run worker:dev
 
 The default Vite dev URL is `http://localhost:5173`.
 
+Execution-related backend settings:
+
+- `REPOSITORY_WORKSPACE_ROOT`: optional temp workspace root for cloned repositories
+- `REPOSITORY_COMMAND_TIMEOUT_SECONDS`: per-command timeout for setup/test/git operations
+- `GIT_COMMIT_USER_NAME`: git author name used for worker-created commits
+- `GIT_COMMIT_USER_EMAIL`: git author email used for worker-created commits
+
 ## GitHub configuration
 
 Set these repository secrets for deployment:
@@ -75,7 +84,7 @@ Set these repository variables:
 - `ORCH_GITHUB_APP_ID` if using a GitHub App
 - `ORCH_GITHUB_INSTALLATION_ID` if using a GitHub App
 
-If you want the orchestrator to prepare working branches and promote them upstream, the GitHub token or GitHub App needs repository `Contents: write` permission.
+If you want the orchestrator to prepare working branches, commit code, push changes, and promote them upstream, the GitHub token or GitHub App needs repository `Contents: write` permission.
 
 The deploy workflow always enables Microsoft Entra auth and reuses:
 
@@ -87,3 +96,14 @@ The deploy workflow always enables Microsoft Entra auth and reuses:
 - The GitHub Actions deploy workflow builds public GHCR images and points Container Apps at those image tags.
 - The API and worker use managed identity in Azure and the signed-in Azure developer identity locally when accessing Key Vault.
 - The thread state is stored in Azure Table Storage and the worker queue runs through Azure Service Bus.
+- The worker container now needs `git` plus a usable build/test toolchain. The provided worker image includes the .NET SDK, `git`, `node`, `npm`, `python3`, `pip3`, `curl`, `jq`, and common archive/build utilities so typical repos can bootstrap more tooling during setup.
+
+## Repository execution flow
+
+1. Attach a GitHub repo, base branch, and target branch in the thread.
+2. Send an implementation request.
+3. Codex drafts the approach, Claude critiques it, and Codex makes the final implementation decision.
+4. The worker prepares the thread's working branch on GitHub.
+5. The worker clones that repo/branch into an isolated temp workspace, asks Codex for concrete file edits and verification commands, applies the edits, runs setup/tool-install commands as needed, then runs tests, commits, and pushes back to the working branch.
+6. Review the pushed changes in GitHub through the compare URL shown in the thread, or locally with `git fetch` and `git checkout <working-branch>`.
+7. When you're happy with the branch, use the thread's promote action to merge the working branch into the target branch.

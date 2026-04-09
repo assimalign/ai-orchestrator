@@ -32,6 +32,11 @@ public sealed class OrchestratorSettings
     public string? GitHubInstallationId { get; init; }
     public string? GitHubAppPrivateKey { get; init; }
     public string GitHubAppPrivateKeySecretName { get; init; } = "github-app-private-key";
+    public string RepositoryWorkspaceRoot { get; init; } =
+        Path.Combine(Path.GetTempPath(), "assimalign-ai-orchestrator", "workspaces");
+    public int RepositoryCommandTimeoutSeconds { get; init; } = 900;
+    public string GitCommitUserName { get; init; } = "Assimalign AI Orchestrator";
+    public string GitCommitUserEmail { get; init; } = "orchestrator@assimalign.local";
     public string? EntraTenantId { get; init; }
     public string? EntraClientId { get; init; }
 
@@ -111,6 +116,15 @@ public sealed class OrchestratorSettings
             GitHubAppPrivateKey = configuration["GITHUB_APP_PRIVATE_KEY"],
             GitHubAppPrivateKeySecretName =
                 configuration["GITHUB_APP_PRIVATE_KEY_SECRET_NAME"] ?? "github-app-private-key",
+            RepositoryWorkspaceRoot =
+                configuration["REPOSITORY_WORKSPACE_ROOT"]
+                ?? Path.Combine(Path.GetTempPath(), "assimalign-ai-orchestrator", "workspaces"),
+            RepositoryCommandTimeoutSeconds =
+                configuration.GetValue("REPOSITORY_COMMAND_TIMEOUT_SECONDS", 900),
+            GitCommitUserName =
+                configuration["GIT_COMMIT_USER_NAME"] ?? "Assimalign AI Orchestrator",
+            GitCommitUserEmail =
+                configuration["GIT_COMMIT_USER_EMAIL"] ?? "orchestrator@assimalign.local",
             EntraTenantId = configuration["ENTRA_TENANT_ID"],
             EntraClientId = configuration["ENTRA_CLIENT_ID"],
         };

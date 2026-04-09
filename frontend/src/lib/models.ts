@@ -15,6 +15,7 @@ export type RepositoryWorkflowStatus =
   | "failed";
 
 export interface RepositoryTarget {
+  connector?: string;
   owner: string;
   repo: string;
   branch?: string;
@@ -96,10 +97,29 @@ export interface AppConfigResponse {
   speechVoice: string;
   providers: ProviderAvailability;
   models: ModelCatalog;
+  connectors: ConnectorDefinition[];
 }
 
 export interface SpeechTokenResponse {
   token: string;
   region: string;
   voice: string;
+}
+
+export interface ConnectorDefinition {
+  id: string;
+  label: string;
+  kind: string;
+  description: string;
+  enabled: boolean;
+}
+
+export interface ConnectorRepositoryReference {
+  connectorId: string;
+  owner: string;
+  repo: string;
+  defaultBranch: string;
+  private: boolean;
+  description: string;
+  url: string;
 }

@@ -2,6 +2,7 @@ import { getAccessToken } from "../features/auth/auth-client";
 import { runtimeConfig } from "./runtime-config";
 import type {
   AppConfigResponse,
+  ConnectorRepositoryReference,
   ConversationInput,
   ConversationThread,
   ConversationThreadDetail,
@@ -82,6 +83,12 @@ export function promoteThread(threadId: string) {
   });
 }
 
+export function listConnectorRepositories(connectorId: string) {
+  return request<ConnectorRepositoryReference[]>(
+    `/api/connectors/${encodeURIComponent(connectorId)}/repositories`,
+  );
+}
+
 export function getSpeechToken() {
   return request<SpeechTokenResponse>("/api/speech/token", {
     method: "POST",
@@ -89,6 +96,7 @@ export function getSpeechToken() {
 }
 
 export function buildRepositoryTarget(
+  connector: string,
   owner: string,
   repo: string,
   baseBranch: string,
@@ -99,6 +107,7 @@ export function buildRepositoryTarget(
   }
 
   return {
+    connector: connector.trim() || "github",
     owner: owner.trim(),
     repo: repo.trim(),
     baseBranch: baseBranch.trim() || undefined,

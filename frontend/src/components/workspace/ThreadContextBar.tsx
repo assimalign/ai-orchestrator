@@ -91,6 +91,9 @@ export function ThreadContextBar({
               : "No GitHub repo attached"
           }
         />
+        {repository?.connector ? (
+          <ContextChip value={`Connector ${formatConnectorLabel(repository.connector)}`} />
+        ) : null}
         {repository?.baseBranch ? (
           <ContextChip value={`Base ${repository.baseBranch}`} />
         ) : null}
@@ -119,4 +122,8 @@ function formatModelLabel(modelId: string) {
       "claude-3-7-sonnet-20250219": "3.7 Sonnet",
     }[modelId] ?? modelId
   );
+}
+
+function formatConnectorLabel(connectorId: string) {
+  return connectorId === "github" ? "GitHub" : connectorId;
 }

@@ -2,6 +2,7 @@ using Assimalign.AI.Orchestrator.Application.Configuration;
 using Assimalign.AI.Orchestrator.Application.Runtime;
 using Assimalign.AI.Orchestrator.Application.Services;
 using Assimalign.AI.Orchestrator.Core.Models;
+using Assimalign.AI.Orchestrator.Infrastructure.Execution;
 using Assimalign.AI.Orchestrator.Infrastructure.Integrations.AI;
 using Assimalign.AI.Orchestrator.Infrastructure.Integrations.GitHub;
 using Assimalign.AI.Orchestrator.Infrastructure.Messaging;
@@ -55,15 +56,28 @@ public static class OrchestratorRuntimeFactory
 
         var providerHttpClient = new HttpClient();
         var githubContextService = new GitHubContextService(settings, secretProvider);
-        var engine = new OrchestrationEngine(
-            githubContextService,
+        var openAiClient =
             !string.IsNullOrWhiteSpace(openAiApiKey)
                 ? new OpenAiOrchestrationClient(providerHttpClient, openAiApiKey, settings.OpenAiModel)
-                : null,
+                : null;
+        var anthropicClient =
             !string.IsNullOrWhiteSpace(anthropicApiKey)
                 ? new AnthropicReviewClient(providerHttpClient, anthropicApiKey, settings.AnthropicModel)
-                : null);
-        var processor = new OrchestrationProcessor(repository, engine, githubContextService);
+                : null;
+        var engine = new OrchestrationEngine(
+            githubContextService,
+            openAiClient,
+            anthropicClient);
+        var repositoryExecutionService =
+            openAiClient is null
+                ? null
+                : new RepositoryExecutionService(settings, openAiClient, githubContextService);
+        var processor = new OrchestrationProcessor(
+            repository,
+            engine,
+            githubContextService,
+            repositoryExecutionService
+                ?? throw new InvalidOperationException("OPENAI_API_KEY is required for repository execution."));
         var threadService = new ThreadConversationService(
             repository,
             processor,
@@ -83,8 +97,8 @@ public static class OrchestratorRuntimeFactory
             SpeechTokenService = speechTokenService,
             ProviderAvailability = new ProviderAvailability
             {
-                OpenAi = !string.IsNullOrWhiteSpace(openAiApiKey),
-                Anthropic = !string.IsNullOrWhiteSpace(anthropicApiKey),
+                OpenAi = openAiClient is not null,
+                Anthropic = anthropicClient is not null,
             },
             Queue = queue,
         };

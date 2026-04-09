@@ -1,12 +1,20 @@
 import type { FormEvent, ReactNode } from "react";
-import type { AppConfigResponse, ModelOption, ThreadMessage } from "../../lib/models";
+import type {
+  AppConfigResponse,
+  ConnectorRepositoryReference,
+  ThreadMessage,
+} from "../../lib/models";
+import { RepositoryConnectorPicker } from "./RepositoryConnectorPicker";
 
 type ComposerPanelProps = {
   anthropicModel: string;
   baseBranch: string;
   config?: AppConfigResponse;
+  connectorId: string;
+  connectorRepositories: ConnectorRepositoryReference[];
   draft: string;
   hasActiveThread: boolean;
+  isLoadingRepositories: boolean;
   isListening: boolean;
   isSending: boolean;
   isSpeaking: boolean;
@@ -14,10 +22,11 @@ type ComposerPanelProps = {
   onAnthropicModelChange: (value: string) => void;
   onBaseBranchChange: (value: string) => void;
   onCaptureSpeech: () => Promise<void>;
+  onConnectorChange: (value: string) => void;
   onDraftChange: (value: string) => void;
+  onManageConnectors: () => void;
   onOpenAiModelChange: (value: string) => void;
-  onOwnerChange: (value: string) => void;
-  onRepoChange: (value: string) => void;
+  onRepositorySelect: (repository: ConnectorRepositoryReference) => void;
   onSpeakLatestResponse: () => Promise<void>;
   onSubmit: () => Promise<void>;
   openAiModel: string;
@@ -32,8 +41,11 @@ export function ComposerPanel({
   anthropicModel,
   baseBranch,
   config,
+  connectorId,
+  connectorRepositories,
   draft,
   hasActiveThread,
+  isLoadingRepositories,
   isListening,
   isSending,
   isSpeaking,
@@ -41,10 +53,11 @@ export function ComposerPanel({
   onAnthropicModelChange,
   onBaseBranchChange,
   onCaptureSpeech,
+  onConnectorChange,
   onDraftChange,
+  onManageConnectors,
   onOpenAiModelChange,
-  onOwnerChange,
-  onRepoChange,
+  onRepositorySelect,
   onSpeakLatestResponse,
   onSubmit,
   openAiModel,
@@ -62,15 +75,16 @@ export function ComposerPanel({
   return (
     <section className="mt-5 shrink-0 space-y-3">
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,0.8fr))]">
-        <CompactField
-          label="Repository"
-          placeholder="owner/repo"
-          value={owner || repo ? `${owner}${repo ? `/${repo}` : ""}` : ""}
-          onChange={(value) => {
-            const [nextOwner, ...repoParts] = value.split("/");
-            onOwnerChange(nextOwner ?? "");
-            onRepoChange(repoParts.join("/"));
-          }}
+        <RepositoryConnectorPicker
+          connectorId={connectorId}
+          connectors={config?.connectors ?? []}
+          isLoading={isLoadingRepositories}
+          onConnectorChange={onConnectorChange}
+          onManageConnectors={onManageConnectors}
+          onRepositorySelect={onRepositorySelect}
+          repositories={connectorRepositories}
+          selectedOwner={owner}
+          selectedRepo={repo}
         />
         <CompactField
           label="Base"
@@ -192,7 +206,7 @@ function ToolbarSelect({
   disabled?: boolean;
   label: string;
   onChange: (value: string) => void;
-  options: ModelOption[];
+  options: AppConfigResponse["models"]["openAi"];
   value: string;
 }) {
   const resolvedValue = value || options[0]?.id || "";

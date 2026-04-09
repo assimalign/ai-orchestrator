@@ -28,6 +28,7 @@ public enum RepositoryWorkflowStatus
 
 public sealed class RepositoryTarget
 {
+    public string Connector { get; set; } = "github";
     public string Owner { get; set; } = string.Empty;
     public string Repo { get; set; } = string.Empty;
     public string? Branch { get; set; }
@@ -44,6 +45,26 @@ public sealed class RepositoryTarget
     public RepositoryWorkflowStatus WorkflowStatus { get; set; } = RepositoryWorkflowStatus.Attached;
     public int? IssueNumber { get; set; }
     public int? PullRequestNumber { get; set; }
+}
+
+public sealed class ConnectorDefinition
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Kind { get; set; } = "repository";
+    public string Description { get; set; } = string.Empty;
+    public bool Enabled { get; set; }
+}
+
+public sealed class ConnectorRepositoryReference
+{
+    public string ConnectorId { get; set; } = string.Empty;
+    public string Owner { get; set; } = string.Empty;
+    public string Repo { get; set; } = string.Empty;
+    public string DefaultBranch { get; set; } = string.Empty;
+    public bool Private { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
 }
 
 public sealed class ConversationInput
@@ -162,6 +183,50 @@ public sealed class PlanningArtifact
 public sealed class ReviewArtifact
 {
     public string Message { get; set; } = string.Empty;
+}
+
+public sealed class RepositoryExecutionContextArtifact
+{
+    public string Message { get; set; } = string.Empty;
+    public string CommitMessage { get; set; } = string.Empty;
+    public List<string> SelectedFiles { get; set; } = [];
+    public List<string> SetupCommands { get; set; } = [];
+    public List<string> TestCommands { get; set; } = [];
+}
+
+public sealed class RepositoryFileChange
+{
+    public string Path { get; set; } = string.Empty;
+    public string Operation { get; set; } = "upsert";
+    public string? Content { get; set; }
+}
+
+public sealed class RepositoryExecutionArtifact
+{
+    public string Message { get; set; } = string.Empty;
+    public string CommitMessage { get; set; } = string.Empty;
+    public List<string> SetupCommands { get; set; } = [];
+    public List<string> TestCommands { get; set; } = [];
+    public List<RepositoryFileChange> Changes { get; set; } = [];
+}
+
+public sealed class CommandExecutionResult
+{
+    public string Command { get; set; } = string.Empty;
+    public int ExitCode { get; set; }
+    public string StandardOutput { get; set; } = string.Empty;
+    public string StandardError { get; set; } = string.Empty;
+}
+
+public sealed class RepositoryExecutionResult
+{
+    public required RepositoryTarget Repository { get; init; }
+    public required string CommitSha { get; init; }
+    public required string CommitMessage { get; init; }
+    public required string Summary { get; init; }
+    public IReadOnlyList<string> ChangedFiles { get; init; } = [];
+    public IReadOnlyList<CommandExecutionResult> SetupResults { get; init; } = [];
+    public IReadOnlyList<CommandExecutionResult> TestResults { get; init; } = [];
 }
 
 public sealed class OrchestrationResult

@@ -1,3 +1,4 @@
+using Assimalign.AI.Orchestrator.Application.Abstractions.Execution;
 using Assimalign.AI.Orchestrator.Application.Abstractions.GitHub;
 using Assimalign.AI.Orchestrator.Infrastructure.Storage;
 using Assimalign.AI.Orchestrator.Core.Models;
@@ -7,7 +8,8 @@ namespace Assimalign.AI.Orchestrator.Application.Services;
 public sealed class OrchestrationProcessor(
     IThreadRepository repository,
     OrchestrationEngine engine,
-    IGitHubContextService gitHubContextService)
+    IGitHubContextService gitHubContextService,
+    IRepositoryExecutionService repositoryExecutionService)
 {
     public async Task<ConversationThreadDetail> ProcessAsync(
         string threadId,
@@ -48,7 +50,6 @@ public sealed class OrchestrationProcessor(
                 },
                 cancellationToken);
 
-            thread.Status = ThreadStageStatus.Completed;
             thread.UpdatedAt = DateTimeOffset.UtcNow;
             thread.Summary = result.Summary;
             thread.LastMessagePreview = BuildPreview(result.Summary);
@@ -60,7 +61,23 @@ public sealed class OrchestrationProcessor(
                     thread,
                     result.Plan.SuggestedBranchName,
                     cancellationToken);
+
+                if (thread.Repository?.WorkflowStatus is not RepositoryWorkflowStatus.Failed)
+                {
+                    var executionResult = await ExecuteRepositoryChangesAsync(
+                        thread,
+                        sourceMessage,
+                        threadHistory,
+                        result,
+                        cancellationToken);
+
+                    thread.Repository = executionResult.Repository;
+                    thread.Summary = executionResult.Summary;
+                    thread.LastMessagePreview = BuildPreview(executionResult.Summary);
+                }
             }
+
+            thread.Status = ThreadStageStatus.Completed;
 
             await repository.UpdateThreadAsync(thread, cancellationToken);
 
@@ -72,7 +89,7 @@ public sealed class OrchestrationProcessor(
                     Role = ThreadMessageRole.Assistant,
                     Stage = ThreadStageStatus.Completed,
                     Title = "Codex",
-                    Content = result.Summary,
+                    Content = thread.Summary ?? result.Summary,
                     Provider = "codex",
                     CreatedAt = DateTimeOffset.UtcNow,
                 },
@@ -108,6 +125,56 @@ public sealed class OrchestrationProcessor(
     {
         var normalized = text.ReplaceLineEndings(" ").Trim();
         return normalized.Length <= 120 ? normalized : $"{normalized[..117]}...";
+    }
+
+    private async Task<RepositoryExecutionResult> ExecuteRepositoryChangesAsync(
+        ConversationThread thread,
+        ThreadMessage sourceMessage,
+        IReadOnlyList<ThreadMessage> threadHistory,
+        OrchestrationResult result,
+        CancellationToken cancellationToken)
+    {
+        await repository.AddMessageAsync(
+            new ThreadMessage
+            {
+                Id = Guid.NewGuid().ToString("D"),
+                ThreadId = thread.Id,
+                Role = ThreadMessageRole.Stage,
+                Stage = ThreadStageStatus.Synthesizing,
+                Title = "Repository execution started",
+                Content = "Codex is cloning the working branch, preparing file edits, and running verification.",
+                Provider = "codex",
+                CreatedAt = DateTimeOffset.UtcNow,
+            },
+            cancellationToken);
+
+        var executionResult = await repositoryExecutionService.ExecuteAsync(
+            new ConversationInput
+            {
+                Text = sourceMessage.Content,
+                Models = thread.Models,
+                Repository = thread.Repository,
+            },
+            thread.Repository!,
+            result,
+            threadHistory,
+            cancellationToken);
+
+        await repository.AddMessageAsync(
+            new ThreadMessage
+            {
+                Id = Guid.NewGuid().ToString("D"),
+                ThreadId = thread.Id,
+                Role = ThreadMessageRole.Stage,
+                Stage = ThreadStageStatus.Completed,
+                Title = "Repository changes pushed",
+                Content = BuildExecutionMessage(executionResult),
+                Provider = "github",
+                CreatedAt = DateTimeOffset.UtcNow,
+            },
+            cancellationToken);
+
+        return executionResult;
     }
 
     private async Task PrepareWorkingBranchAsync(
@@ -172,6 +239,34 @@ public sealed class OrchestrationProcessor(
         if (!string.IsNullOrWhiteSpace(branchResult.SourceCommitSha))
         {
             lines.Add($"Source commit: {branchResult.SourceCommitSha}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildExecutionMessage(RepositoryExecutionResult executionResult)
+    {
+        var lines = new List<string>
+        {
+            $"Repository: {executionResult.Repository.Owner}/{executionResult.Repository.Repo}",
+            $"Working branch: {executionResult.Repository.WorkingBranch ?? executionResult.Repository.Branch}",
+            $"Commit: {executionResult.CommitSha}",
+            $"Commit message: {executionResult.CommitMessage}",
+        };
+
+        if (executionResult.ChangedFiles.Count > 0)
+        {
+            lines.Add($"Changed files: {string.Join(", ", executionResult.ChangedFiles)}");
+        }
+
+        foreach (var testResult in executionResult.TestResults)
+        {
+            lines.Add($"Verified: {testResult.Command}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(executionResult.Repository.CompareUrl))
+        {
+            lines.Add($"Review: {executionResult.Repository.CompareUrl}");
         }
 
         return string.Join(Environment.NewLine, lines);

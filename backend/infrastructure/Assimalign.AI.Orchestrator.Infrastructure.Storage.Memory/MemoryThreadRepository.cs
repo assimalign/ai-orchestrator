@@ -123,6 +123,7 @@ public sealed class MemoryThreadRepository : IThreadRepository
             ? null
             : new RepositoryTarget
             {
+                Connector = repository.Connector,
                 Owner = repository.Owner,
                 Repo = repository.Repo,
                 Branch = repository.Branch,

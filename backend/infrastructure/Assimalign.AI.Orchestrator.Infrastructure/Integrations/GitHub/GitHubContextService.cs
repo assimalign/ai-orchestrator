@@ -80,6 +80,10 @@ public sealed class GitHubContextService : IGitHubContextService
         return userDocument.RootElement.EnumerateArray().Select(MapRepository).ToArray();
     }
 
+    public Task<string?> GetAccessTokenForRepositoryOperationsAsync(
+        CancellationToken cancellationToken = default) =>
+        GetAccessTokenAsync(cancellationToken);
+
     public async Task<GitHubContextSnapshot?> BuildSnapshotAsync(
         RepositoryTarget? target,
         CancellationToken cancellationToken = default)
@@ -93,6 +97,7 @@ public sealed class GitHubContextService : IGitHubContextService
         {
             Repository = new RepositoryTarget
             {
+                Connector = string.IsNullOrWhiteSpace(target.Connector) ? "github" : target.Connector,
                 Owner = target.Owner,
                 Repo = target.Repo,
                 Branch = target.Branch,
@@ -480,6 +485,7 @@ public sealed class GitHubContextService : IGitHubContextService
     private static RepositoryTarget CloneRepositoryTarget(RepositoryTarget source) =>
         new()
         {
+            Connector = source.Connector,
             Owner = source.Owner,
             Repo = source.Repo,
             Branch = source.Branch,
