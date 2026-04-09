@@ -27,6 +27,7 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
             threadHistory,
             null,
             null,
+            null,
             "medium",
             modelOverride,
             cancellationToken);
@@ -38,6 +39,7 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
         string requirement,
         PlanningArtifact plan,
         ReviewArtifact review,
+        string? codexDebateReply,
         GitHubContextSnapshot? context,
         IReadOnlyList<ThreadMessage>? threadHistory,
         string? modelOverride = null,
@@ -50,7 +52,30 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
             threadHistory,
             plan,
             review,
+            codexDebateReply,
             "low",
+            modelOverride,
+            cancellationToken);
+    }
+
+    public Task<string> RespondToReviewAsync(
+        string requirement,
+        PlanningArtifact plan,
+        ReviewArtifact review,
+        GitHubContextSnapshot? context,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        string? modelOverride = null,
+        CancellationToken cancellationToken = default)
+    {
+        return SendAsync(
+            PromptLibrary.DebateSystemPrompt,
+            requirement,
+            context,
+            threadHistory,
+            plan,
+            review,
+            null,
+            "medium",
             modelOverride,
             cancellationToken);
     }
@@ -62,6 +87,7 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
         IReadOnlyList<ThreadMessage>? threadHistory,
         PlanningArtifact? plan,
         ReviewArtifact? review,
+        string? codexDebateReply,
         string reasoningEffort,
         string? modelOverride,
         CancellationToken cancellationToken)
@@ -84,7 +110,7 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
                             new
                             {
                                 type = "input_text",
-                                text = BuildPromptText(requirement, context, threadHistory, plan, review),
+                                text = BuildPromptText(requirement, context, threadHistory, plan, review, codexDebateReply),
                             },
                         },
                     },
@@ -110,7 +136,8 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
         GitHubContextSnapshot? context,
         IReadOnlyList<ThreadMessage>? threadHistory,
         PlanningArtifact? plan,
-        ReviewArtifact? review)
+        ReviewArtifact? review,
+        string? codexDebateReply)
     {
         var lines = new List<string>
         {
@@ -146,6 +173,13 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
             lines.Add(string.Empty);
             lines.Add("Claude feedback:");
             lines.Add(review.Message);
+        }
+
+        if (!string.IsNullOrWhiteSpace(codexDebateReply))
+        {
+            lines.Add(string.Empty);
+            lines.Add("Codex response to Claude:");
+            lines.Add(codexDebateReply);
         }
 
         return string.Join(Environment.NewLine, lines);

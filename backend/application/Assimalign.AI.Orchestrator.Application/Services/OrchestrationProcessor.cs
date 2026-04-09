@@ -71,7 +71,7 @@ public sealed class OrchestrationProcessor(
                     ThreadId = threadId,
                     Role = ThreadMessageRole.Assistant,
                     Stage = ThreadStageStatus.Completed,
-                    Title = "Codex response",
+                    Title = "Codex",
                     Content = result.Summary,
                     Provider = "codex",
                     CreatedAt = DateTimeOffset.UtcNow,

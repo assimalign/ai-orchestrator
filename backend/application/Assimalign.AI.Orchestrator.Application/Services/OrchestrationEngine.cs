@@ -53,6 +53,7 @@ public sealed class OrchestrationEngine(
         }
 
         ReviewArtifact review;
+        string? codexDebateReply = null;
         if (anthropicClient is not null)
         {
             if (onStage is not null)
@@ -86,6 +87,39 @@ public sealed class OrchestrationEngine(
                             CreatedAt = DateTimeOffset.UtcNow,
                             Metadata = BuildModelMetadata(
                                 input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                        },
+                    });
+                }
+
+                if (onStage is not null)
+                {
+                    await onStage(new StageUpdate { Status = ThreadStageStatus.Synthesizing });
+                }
+
+                codexDebateReply = await openAiClient.RespondToReviewAsync(
+                    input.Text,
+                    plan,
+                    review,
+                    context,
+                    threadHistory,
+                    input.Models?.OpenAi,
+                    cancellationToken);
+
+                if (onStage is not null)
+                {
+                    await onStage(new StageUpdate
+                    {
+                        Status = ThreadStageStatus.Synthesizing,
+                        Message = new ThreadMessage
+                        {
+                            Id = Guid.NewGuid().ToString("D"),
+                            Role = ThreadMessageRole.Stage,
+                            Stage = ThreadStageStatus.Synthesizing,
+                            Title = BuildStageTitle("Codex", input.Models?.OpenAi ?? openAiClient.DefaultModel),
+                            Content = codexDebateReply.Trim(),
+                            Provider = "codex",
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            Metadata = BuildModelMetadata(input.Models?.OpenAi ?? openAiClient.DefaultModel),
                         },
                     });
                 }
@@ -132,6 +166,7 @@ public sealed class OrchestrationEngine(
             input.Text,
             plan,
             review,
+            codexDebateReply,
             context,
             threadHistory,
             input.Models?.OpenAi,

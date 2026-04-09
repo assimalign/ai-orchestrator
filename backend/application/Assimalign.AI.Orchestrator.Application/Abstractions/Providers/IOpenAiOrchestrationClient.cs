@@ -13,10 +13,20 @@ public interface IOpenAiOrchestrationClient
         string? modelOverride = null,
         CancellationToken cancellationToken = default);
 
+    Task<string> RespondToReviewAsync(
+        string requirement,
+        PlanningArtifact plan,
+        ReviewArtifact review,
+        GitHubContextSnapshot? context,
+        IReadOnlyList<ThreadMessage>? threadHistory,
+        string? modelOverride = null,
+        CancellationToken cancellationToken = default);
+
     Task<string> SynthesizeBriefAsync(
         string requirement,
         PlanningArtifact plan,
         ReviewArtifact review,
+        string? codexDebateReply,
         GitHubContextSnapshot? context,
         IReadOnlyList<ThreadMessage>? threadHistory,
         string? modelOverride = null,

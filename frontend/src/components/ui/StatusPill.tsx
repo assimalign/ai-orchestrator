@@ -10,11 +10,21 @@ const toneClasses: Record<ThreadStageStatus, string> = {
 };
 
 export function StatusPill({ status }: { status: ThreadStageStatus }) {
+  const label =
+    {
+      queued: "queued",
+      planning: "opening",
+      reviewing: "debating",
+      synthesizing: "deciding",
+      completed: "ready",
+      failed: "failed",
+    }[status] ?? status;
+
   return (
     <span
       className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] ${toneClasses[status]}`}
     >
-      {status}
+      {label}
     </span>
   );
 }

@@ -110,8 +110,8 @@ function labelForStage(stage: ThreadStageStatus) {
     {
       queued: "Thread dispatch",
       planning: "Codex reply",
-      reviewing: "Claude reply",
-      synthesizing: "Final response",
+      reviewing: "Claude pushback",
+      synthesizing: "Codex decision",
       completed: "Completed",
       failed: "Failed",
     }[stage] ?? stage
