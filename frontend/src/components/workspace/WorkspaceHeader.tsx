@@ -3,6 +3,7 @@ import type { AppConfigResponse, ConversationThread } from "../../lib/models";
 type WorkspaceHeaderProps = {
   activeThread?: ConversationThread;
   config?: AppConfigResponse;
+  statusMessage?: string;
 };
 
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -16,7 +17,7 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function WorkspaceHeader({ activeThread, config }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ activeThread, config, statusMessage }: WorkspaceHeaderProps) {
   return (
     <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
       <div>
@@ -29,6 +30,11 @@ export function WorkspaceHeader({ activeThread, config }: WorkspaceHeaderProps) 
         <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
           Persistent conversations, repository-bound working branches, and one protected place to coordinate Codex and Claude before promoting upstream.
         </p>
+        {!config && statusMessage ? (
+          <div className="mt-4 max-w-2xl rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+            {statusMessage}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

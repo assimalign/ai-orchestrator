@@ -9,6 +9,9 @@ using Assimalign.AI.Orchestrator.Api;
 var builder = WebApplication.CreateBuilder(args);
 var settings = OrchestratorSettings.Load(builder.Configuration);
 
+builder.Services.AddAssimalignAiOrchestratorTelemetry(
+    builder.Configuration,
+    "Assimalign.AI.Orchestrator.Api");
 builder.Services.AddAssimalignAiOrchestratorApiPlatform(settings);
 builder.Services.AddAssimalignAiOrchestratorRuntime(settings);
 

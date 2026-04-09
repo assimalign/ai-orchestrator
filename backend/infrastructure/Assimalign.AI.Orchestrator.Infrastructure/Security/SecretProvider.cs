@@ -11,6 +11,16 @@ public sealed class SecretProvider(string? keyVaultUrl) : ISecretProvider
         new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned),
         new AzureDeveloperCliCredential(),
         new AzureCliCredential());
+    private readonly SecretClientOptions clientOptions = new()
+    {
+        Retry =
+        {
+            Delay = TimeSpan.FromSeconds(1),
+            MaxDelay = TimeSpan.FromSeconds(2),
+            MaxRetries = 2,
+            NetworkTimeout = TimeSpan.FromSeconds(5),
+        },
+    };
 
     private SecretClient? client;
 
@@ -34,11 +44,14 @@ public sealed class SecretProvider(string? keyVaultUrl) : ISecretProvider
             return null;
         }
 
-        client ??= new SecretClient(new Uri(keyVaultUrl), credential);
+        client ??= new SecretClient(new Uri(keyVaultUrl), credential, clientOptions);
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(8));
 
         try
         {
-            var response = await client.GetSecretAsync(secretName, cancellationToken: cancellationToken);
+            var response = await client.GetSecretAsync(secretName, cancellationToken: timeoutCts.Token);
             if (!string.IsNullOrWhiteSpace(response.Value.Value))
             {
                 cache[secretName] = response.Value.Value;
@@ -48,6 +61,26 @@ public sealed class SecretProvider(string? keyVaultUrl) : ISecretProvider
         }
         catch (Azure.RequestFailedException error) when (error.Status == 404 || error.ErrorCode == "SecretNotFound")
         {
+            return null;
+        }
+        catch (Azure.RequestFailedException error) when (error.Status == 401 || error.Status == 403)
+        {
+            Console.Error.WriteLine($"Key Vault access denied while reading secret '{secretName}'.");
+            return null;
+        }
+        catch (CredentialUnavailableException)
+        {
+            Console.Error.WriteLine($"No Azure credential was available while reading secret '{secretName}'.");
+            return null;
+        }
+        catch (AuthenticationFailedException)
+        {
+            Console.Error.WriteLine($"Azure authentication failed while reading secret '{secretName}'.");
+            return null;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            Console.Error.WriteLine($"Key Vault lookup for secret '{secretName}' timed out.");
             return null;
         }
     }

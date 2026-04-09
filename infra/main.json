@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "2783489977838764663"
+      "templateHash": "4315570707360071509"
     }
   },
   "parameters": {
@@ -367,6 +367,14 @@
                 "value": "[parameters('anthropicModel')]"
               },
               {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
+              },
+              {
+                "name": "OTEL_SERVICE_NAME",
+                "value": "Assimalign.AI.Orchestrator.Api"
+              },
+              {
                 "name": "KEY_VAULT_URL",
                 "value": "[variables('keyVaultUrl')]"
               },
@@ -553,6 +561,7 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
         "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]",
@@ -634,6 +643,14 @@
               {
                 "name": "ANTHROPIC_MODEL",
                 "value": "[parameters('anthropicModel')]"
+              },
+              {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
+              },
+              {
+                "name": "OTEL_SERVICE_NAME",
+                "value": "Assimalign.AI.Orchestrator.Worker"
               },
               {
                 "name": "KEY_VAULT_URL",
@@ -835,6 +852,7 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
         "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]",
@@ -897,6 +915,10 @@
               {
                 "name": "ENTRA_CLIENT_ID",
                 "value": "[parameters('entraClientId')]"
+              },
+              {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
               },
               {
                 "name": "SPEECH_VOICE",
@@ -1046,6 +1068,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'apiContainerApp')]",
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]"
       ]
     }

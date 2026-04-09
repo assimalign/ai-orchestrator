@@ -27,25 +27,26 @@ Infrastructure projects follow an abstraction-first pattern. For example:
 2. Copy `frontend/.env.example` to `frontend/.env.local` for the frontend.
 3. Set `EXECUTION_MODE=inline` if you want to run without Service Bus locally.
 4. Provide `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, and your model keys.
-5. Install frontend dependencies:
+5. Set `APPLICATIONINSIGHTS_CONNECTION_STRING` and `VITE_APPLICATIONINSIGHTS_CONNECTION_STRING` if you want telemetry during local development.
+6. Install frontend dependencies:
 
 ```bash
 npm install --prefix frontend
 ```
 
-6. Run the API:
+7. Run the API:
 
 ```bash
 npm run api:dev
 ```
 
-7. Run the frontend:
+8. Run the frontend:
 
 ```bash
 npm run frontend:dev
 ```
 
-8. If you want queue-backed processing, run the worker too:
+9. If you want queue-backed processing, run the worker too:
 
 ```bash
 npm run worker:dev

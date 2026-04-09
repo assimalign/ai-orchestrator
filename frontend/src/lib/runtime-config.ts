@@ -29,6 +29,12 @@ export const runtimeConfig = {
       import.meta.env.VITE_ENTRA_CLIENT_ID,
       "",
     ) ?? "",
+  appInsightsConnectionString:
+    pickValue(
+      window.__APP_CONFIG__?.appInsightsConnectionString,
+      import.meta.env.VITE_APPLICATIONINSIGHTS_CONNECTION_STRING,
+      "",
+    ) ?? "",
 };
 
 export function getAuthRedirectUri() {

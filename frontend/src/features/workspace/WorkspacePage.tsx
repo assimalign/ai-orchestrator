@@ -24,7 +24,11 @@ export function WorkspacePage() {
       />
 
       <main className="flex min-h-[calc(100vh-2rem)] flex-col rounded-[2rem] border border-white/10 bg-black/20 p-5 backdrop-blur">
-        <WorkspaceHeader activeThread={workspace.activeThread} config={workspace.config} />
+        <WorkspaceHeader
+          activeThread={workspace.activeThread}
+          config={workspace.config}
+          statusMessage={workspace.statusMessage}
+        />
         <ThreadContextBar
           apiBaseUrl={runtimeConfig.apiBaseUrl}
           isPromoting={workspace.isPromoting}

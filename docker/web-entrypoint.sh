@@ -6,13 +6,15 @@ window.__APP_CONFIG__ = {
   apiBaseUrl: "${API_BASE_URL:-http://localhost:8080}",
   speechVoice: "${SPEECH_VOICE:-en-US-JennyNeural}",
   entraTenantId: "${ENTRA_TENANT_ID:-}",
-  entraClientId: "${ENTRA_CLIENT_ID:-}"
+  entraClientId: "${ENTRA_CLIENT_ID:-}",
+  appInsightsConnectionString: "${APPLICATIONINSIGHTS_CONNECTION_STRING:-}"
 };
 EOF
 
 api_base_url_set="no"
 entra_tenant_id_set="no"
 entra_client_id_set="no"
+app_insights_connection_string_set="no"
 
 if [ -n "${API_BASE_URL:-}" ]; then
   api_base_url_set="yes"
@@ -26,4 +28,8 @@ if [ -n "${ENTRA_CLIENT_ID:-}" ]; then
   entra_client_id_set="yes"
 fi
 
-echo "Generated runtime config.js (API_BASE_URL set: ${api_base_url_set}, ENTRA_TENANT_ID set: ${entra_tenant_id_set}, ENTRA_CLIENT_ID set: ${entra_client_id_set})"
+if [ -n "${APPLICATIONINSIGHTS_CONNECTION_STRING:-}" ]; then
+  app_insights_connection_string_set="yes"
+fi
+
+echo "Generated runtime config.js (API_BASE_URL set: ${api_base_url_set}, ENTRA_TENANT_ID set: ${entra_tenant_id_set}, ENTRA_CLIENT_ID set: ${entra_client_id_set}, APPLICATIONINSIGHTS_CONNECTION_STRING set: ${app_insights_connection_string_set})"

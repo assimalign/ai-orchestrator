@@ -237,6 +237,14 @@ module apiContainerApp 'modules/container-app.bicep' = {
         value: anthropicModel
       }
       {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.properties.ConnectionString
+      }
+      {
+        name: 'OTEL_SERVICE_NAME'
+        value: 'Assimalign.AI.Orchestrator.Api'
+      }
+      {
         name: 'KEY_VAULT_URL'
         value: keyVaultUrl
       }
@@ -327,6 +335,14 @@ module workerContainerApp 'modules/container-app.bicep' = {
         value: anthropicModel
       }
       {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.properties.ConnectionString
+      }
+      {
+        name: 'OTEL_SERVICE_NAME'
+        value: 'Assimalign.AI.Orchestrator.Worker'
+      }
+      {
         name: 'KEY_VAULT_URL'
         value: keyVaultUrl
       }
@@ -411,6 +427,10 @@ module webContainerApp 'modules/container-app.bicep' = {
       {
         name: 'ENTRA_CLIENT_ID'
         value: entraClientId
+      }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.properties.ConnectionString
       }
       {
         name: 'SPEECH_VOICE'
