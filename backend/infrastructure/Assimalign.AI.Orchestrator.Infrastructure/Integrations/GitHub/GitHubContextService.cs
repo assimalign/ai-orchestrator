@@ -427,9 +427,10 @@ public sealed class GitHubContextService : IGitHubContextService
     {
         using var rsa = RSA.Create();
         rsa.ImportFromPem(privateKey);
+        var rsaParameters = rsa.ExportParameters(includePrivateParameters: true);
 
         var signingCredentials = new SigningCredentials(
-            new RsaSecurityKey(rsa),
+            new RsaSecurityKey(rsaParameters),
             SecurityAlgorithms.RsaSha256);
 
         var now = DateTimeOffset.UtcNow;
