@@ -53,6 +53,9 @@ public sealed class ConnectorDefinition
     public string Label { get; set; } = string.Empty;
     public string Kind { get; set; } = "repository";
     public string Description { get; set; } = string.Empty;
+    public string AuthMode { get; set; } = string.Empty;
+    public IReadOnlyList<string> Capabilities { get; set; } = [];
+    public string SetupSummary { get; set; } = string.Empty;
     public bool Enabled { get; set; }
 }
 

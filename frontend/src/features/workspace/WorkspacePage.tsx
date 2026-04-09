@@ -4,6 +4,7 @@ import { ThreadContextBar } from "../../components/workspace/ThreadContextBar";
 import { StageRail } from "../../components/workspace/StageRail";
 import { ConversationFeed } from "../../components/workspace/ConversationFeed";
 import { ComposerPanel } from "../../components/workspace/ComposerPanel";
+import { ConnectorManagementModal } from "../../components/workspace/ConnectorManagementModal";
 import { useAuth } from "../auth/auth-provider";
 import { useWorkspace } from "./use-workspace";
 import { runtimeConfig } from "../../lib/runtime-config";
@@ -75,6 +76,16 @@ export function WorkspacePage() {
           />
         </section>
       </main>
+
+      {workspace.isConnectorManagerOpen ? (
+        <ConnectorManagementModal
+          connectors={workspace.config?.connectors ?? []}
+          isLoading={workspace.isLoadingConnectorStatuses}
+          onClose={workspace.closeConnectorManager}
+          onRefresh={workspace.refreshConnectorStatuses}
+          statuses={workspace.connectorStatuses}
+        />
+      ) : null}
     </div>
   );
 }

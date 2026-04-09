@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   buildRepositoryTarget,
   createThread,
+  getConnectorStatus,
   getConfig,
   getSpeechToken,
   getThread,
@@ -14,6 +15,7 @@ import type {
   AppConfigResponse,
   ConnectorDefinition,
   ConnectorRepositoryReference,
+  ConnectorStatusResponse,
   ConversationThread,
   ConversationThreadDetail,
   ModelSelection,
@@ -51,6 +53,9 @@ export function useWorkspace(enabled: boolean) {
   const [anthropicModel, setAnthropicModel] = useState("");
   const [statusMessage, setStatusMessage] = useState("Preparing your workspace.");
   const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
+  const [isConnectorManagerOpen, setIsConnectorManagerOpen] = useState(false);
+  const [isLoadingConnectorStatuses, setIsLoadingConnectorStatuses] = useState(false);
+  const [connectorStatuses, setConnectorStatuses] = useState<Record<string, ConnectorStatusResponse>>({});
   const [isSending, setIsSending] = useState(false);
   const [isPromoting, setIsPromoting] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -429,8 +434,41 @@ export function useWorkspace(enabled: boolean) {
     setStatusMessage(`Switching repository connector to ${formatConnectorLabel(nextConnectorId)}.`);
   }
 
+  async function refreshConnectorStatuses(options?: { preserveStatusMessage?: boolean }) {
+    if (!config?.connectors?.length) {
+      return;
+    }
+
+    setIsLoadingConnectorStatuses(true);
+
+    try {
+      const statuses = await Promise.all(
+        config.connectors.map(async (connector) => [connector.id, await getConnectorStatus(connector.id)] as const),
+      );
+
+      setConnectorStatuses(Object.fromEntries(statuses));
+
+      if (!options?.preserveStatusMessage) {
+        setStatusMessage("Connector runtime status refreshed.");
+      }
+    } catch (error) {
+      if (!options?.preserveStatusMessage) {
+        setStatusMessage(formatWorkspaceError(error, "Unable to refresh connector status."));
+      }
+    } finally {
+      setIsLoadingConnectorStatuses(false);
+    }
+  }
+
   function manageConnectors() {
-    setStatusMessage("Connector management UI is coming next. GitHub is available through the configured app or token.");
+    setIsConnectorManagerOpen(true);
+    setStatusMessage("Reviewing connector access and runtime readiness.");
+    void refreshConnectorStatuses({ preserveStatusMessage: true });
+  }
+
+  function closeConnectorManager() {
+    setIsConnectorManagerOpen(false);
+    setStatusMessage("Back to the workspace.");
   }
 
   return {
@@ -439,9 +477,13 @@ export function useWorkspace(enabled: boolean) {
     connectorId,
     connectorRepositories,
     config,
+    connectorStatuses,
+    closeConnectorManager,
     draft,
     baseBranch,
+    isConnectorManagerOpen,
     isLoadingRepositories,
+    isLoadingConnectorStatuses,
     isListening,
     isPromoting,
     isSending,
@@ -451,6 +493,7 @@ export function useWorkspace(enabled: boolean) {
     openAiModel,
     manageConnectors,
     repo,
+    refreshConnectorStatuses,
     selectRepository,
     selectedThreadId,
     setAnthropicModel,

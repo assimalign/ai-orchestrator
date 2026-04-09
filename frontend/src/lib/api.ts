@@ -3,6 +3,7 @@ import { runtimeConfig } from "./runtime-config";
 import type {
   AppConfigResponse,
   ConnectorRepositoryReference,
+  ConnectorStatusResponse,
   ConversationInput,
   ConversationThread,
   ConversationThreadDetail,
@@ -86,6 +87,12 @@ export function promoteThread(threadId: string) {
 export function listConnectorRepositories(connectorId: string) {
   return request<ConnectorRepositoryReference[]>(
     `/api/connectors/${encodeURIComponent(connectorId)}/repositories`,
+  );
+}
+
+export function getConnectorStatus(connectorId: string) {
+  return request<ConnectorStatusResponse>(
+    `/api/connectors/${encodeURIComponent(connectorId)}/status`,
   );
 }
 

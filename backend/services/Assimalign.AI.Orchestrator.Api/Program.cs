@@ -60,7 +60,7 @@ api.MapGet(
                 SpeechVoice = currentRuntime.Settings.SpeechVoice,
                 Providers = currentRuntime.ProviderAvailability,
                 Models = currentRuntime.Settings.BuildModelCatalog(),
-                Connectors = BuildConnectors(currentRuntime.Settings),
+                Connectors = await BuildConnectorsAsync(currentRuntime, cancellationToken),
             }),
             cancellationToken));
 
@@ -153,7 +153,24 @@ api.MapGet(
     "/connectors",
     async (CancellationToken cancellationToken) =>
         await WithRuntime(
-            async currentRuntime => Results.Ok(BuildConnectors(currentRuntime.Settings)),
+            async currentRuntime => Results.Ok(await BuildConnectorsAsync(currentRuntime, cancellationToken)),
+            cancellationToken));
+
+api.MapGet(
+    "/connectors/{connectorId}/status",
+    async (
+        string connectorId,
+        CancellationToken cancellationToken) =>
+        await WithRuntime(
+            async currentRuntime =>
+            {
+                if (!string.Equals(connectorId, "github", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.NotFound();
+                }
+
+                return Results.Ok(await BuildGitHubConnectorStatusAsync(currentRuntime, cancellationToken));
+            },
             cancellationToken));
 
 api.MapGet(
@@ -251,22 +268,103 @@ async Task<IResult> WithRuntime(
     }
 }
 
-static IReadOnlyList<ConnectorDefinition> BuildConnectors(OrchestratorSettings settings)
+static async Task<IReadOnlyList<ConnectorDefinition>> BuildConnectorsAsync(
+    OrchestratorRuntime currentRuntime,
+    CancellationToken cancellationToken)
 {
-    return
-    [
+    var authMode = GetGitHubAuthMode(currentRuntime.Settings);
+    var hasRuntimeCredentials = !string.IsNullOrWhiteSpace(
+        await currentRuntime.GitHubContextService.GetAccessTokenForRepositoryOperationsAsync(cancellationToken));
+
+    return [
         new ConnectorDefinition
         {
             Id = "github",
             Label = "GitHub",
             Kind = "repository",
             Description = "Repository access through a GitHub App installation or runtime token.",
-            Enabled =
-                !string.IsNullOrWhiteSpace(settings.GitHubToken)
-                || (!string.IsNullOrWhiteSpace(settings.GitHubAppId)
-                    && !string.IsNullOrWhiteSpace(settings.GitHubInstallationId)),
+            AuthMode = authMode,
+            Capabilities =
+            [
+                "List accessible repositories",
+                "Create working branches",
+                "Clone repositories into the execution workspace",
+                "Commit and push code changes",
+            ],
+            SetupSummary = authMode == "GitHub App"
+                ? "Requires GitHub App ID, installation ID, and the GitHub App private key in Key Vault."
+                : "Requires a GitHub runtime token in Key Vault or a GitHub App configuration.",
+            Enabled = hasRuntimeCredentials,
         },
     ];
+}
+
+static string GetGitHubAuthMode(OrchestratorSettings settings)
+{
+    if (!string.IsNullOrWhiteSpace(settings.GitHubAppId)
+        && !string.IsNullOrWhiteSpace(settings.GitHubInstallationId))
+    {
+        return "GitHub App";
+    }
+
+    if (!string.IsNullOrWhiteSpace(settings.GitHubToken))
+    {
+        return "Personal access token";
+    }
+
+    return "Not configured";
+}
+
+static async Task<ConnectorStatusResponse> BuildGitHubConnectorStatusAsync(
+    OrchestratorRuntime currentRuntime,
+    CancellationToken cancellationToken)
+{
+    var authMode = GetGitHubAuthMode(currentRuntime.Settings);
+    var accessToken = await currentRuntime.GitHubContextService.GetAccessTokenForRepositoryOperationsAsync(
+        cancellationToken);
+
+    if (string.IsNullOrWhiteSpace(accessToken))
+    {
+        return new ConnectorStatusResponse
+        {
+            Id = "github",
+            Label = "GitHub",
+            Enabled = false,
+            Status = "configurationRequired",
+            AuthMode = authMode,
+            Message =
+                "GitHub credentials are not available at runtime. Add either a GitHub App private key or a GitHub runtime token to Key Vault, then redeploy.",
+        };
+    }
+
+    try
+    {
+        var repositories = await currentRuntime.GitHubContextService.ListRepositoriesAsync(cancellationToken);
+        return new ConnectorStatusResponse
+        {
+            Id = "github",
+            Label = "GitHub",
+            Enabled = true,
+            Status = "ready",
+            AuthMode = authMode == "Not configured" ? "Runtime token" : authMode,
+            RepositoryCount = repositories.Count,
+            Message = repositories.Count > 0
+                ? $"GitHub is connected and currently exposes {repositories.Count} repositories to the orchestrator."
+                : "GitHub authenticated successfully, but this installation or token did not return any repositories.",
+        };
+    }
+    catch (Exception error)
+    {
+        return new ConnectorStatusResponse
+        {
+            Id = "github",
+            Label = "GitHub",
+            Enabled = false,
+            Status = "error",
+            AuthMode = authMode,
+            Message = error.GetBaseException().Message,
+        };
+    }
 }
 
 app.Run($"http://0.0.0.0:{settings.Port}");

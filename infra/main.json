@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14512748274041591413"
+      "templateHash": "12373449131362840574"
     }
   },
   "parameters": {
@@ -74,6 +74,48 @@
       "defaultValue": "",
       "metadata": {
         "description": "Microsoft Entra client ID for the SPA/API app registration."
+      }
+    },
+    "openAiApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "OpenAI API key stored in Key Vault for runtime access. Leave empty to skip creation."
+      }
+    },
+    "anthropicApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Anthropic API key stored in Key Vault for runtime access. Leave empty to skip creation."
+      }
+    },
+    "azureSpeechKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Azure Speech API key stored in Key Vault for runtime access. Leave empty to skip creation."
+      }
+    },
+    "githubRuntimeToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional GitHub personal access token stored in Key Vault. Leave empty when using a GitHub App."
+      }
+    },
+    "githubAppPrivateKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional GitHub App private key stored in Key Vault. Leave empty when using a personal token."
+      }
+    },
+    "githubWebhookSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional GitHub webhook secret stored in Key Vault. Leave empty to skip creation."
       }
     },
     "openAiModel": {
@@ -210,6 +252,78 @@
           "name": "standard"
         }
       }
+    },
+    {
+      "condition": "[not(empty(parameters('openAiApiKey')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'openai-api-key')]",
+      "properties": {
+        "value": "[parameters('openAiApiKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('anthropicApiKey')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'anthropic-api-key')]",
+      "properties": {
+        "value": "[parameters('anthropicApiKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('azureSpeechKey')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'azure-speech-key')]",
+      "properties": {
+        "value": "[parameters('azureSpeechKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('githubRuntimeToken')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'github-token')]",
+      "properties": {
+        "value": "[parameters('githubRuntimeToken')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('githubAppPrivateKey')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'github-app-private-key')]",
+      "properties": {
+        "value": "[parameters('githubAppPrivateKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('githubWebhookSecret')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'github-webhook-secret')]",
+      "properties": {
+        "value": "[parameters('githubWebhookSecret')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
     },
     {
       "type": "Microsoft.CognitiveServices/accounts",

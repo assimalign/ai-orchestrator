@@ -4,6 +4,9 @@ namespace Assimalign.AI.Orchestrator.Application.Abstractions.GitHub;
 
 public interface IGitHubContextService
 {
+    Task<string?> GetAccessTokenForRepositoryOperationsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<GitHubRepositoryReference>> ListRepositoriesAsync(
         CancellationToken cancellationToken = default);
 

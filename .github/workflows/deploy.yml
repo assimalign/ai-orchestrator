@@ -111,10 +111,46 @@ jobs:
       - name: Deploy infrastructure
         id: deploy
         shell: pwsh
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          ORCH_GITHUB_RUNTIME_TOKEN: ${{ secrets.ORCH_GITHUB_RUNTIME_TOKEN }}
+          ORCH_GITHUB_APP_PRIVATE_KEY: ${{ secrets.ORCH_GITHUB_APP_PRIVATE_KEY }}
+          ORCH_GITHUB_WEBHOOK_SECRET: ${{ secrets.ORCH_GITHUB_WEBHOOK_SECRET }}
         run: |
+          $secretParametersPath = Join-Path $env:RUNNER_TEMP 'ai-dev-orchestrator.secrets.parameters.json'
+          $secretParameters = @{
+            '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'
+            contentVersion = '1.0.0.0'
+            parameters = @{
+              openAiApiKey = @{
+                value = $env:OPENAI_API_KEY
+              }
+              anthropicApiKey = @{
+                value = $env:ANTHROPIC_API_KEY
+              }
+              azureSpeechKey = @{
+                value = $env:AZURE_SPEECH_KEY
+              }
+              githubRuntimeToken = @{
+                value = $env:ORCH_GITHUB_RUNTIME_TOKEN
+              }
+              githubAppPrivateKey = @{
+                value = $env:ORCH_GITHUB_APP_PRIVATE_KEY
+              }
+              githubWebhookSecret = @{
+                value = $env:ORCH_GITHUB_WEBHOOK_SECRET
+              }
+            }
+          }
+
+          $secretParameters | ConvertTo-Json -Depth 10 | Set-Content -Path $secretParametersPath
+
           $deployment = az deployment group create `
             --resource-group "${env:AZURE_RESOURCE_GROUP}" `
             --template-file "infra/main.bicep" `
+            --parameters "@$secretParametersPath" `
             --parameters baseName="${env:AZURE_BASE_NAME}" `
                          entraTenantId="${{ secrets.AZURE_TENANT_ID }}" `
                          entraClientId="${{ secrets.AZURE_CLIENT_ID }}" `
@@ -126,27 +162,8 @@ jobs:
                          githubInstallationId="${{ vars.ORCH_GITHUB_INSTALLATION_ID || '' }}" `
             --output json | ConvertFrom-Json
 
-          "key_vault_name=$($deployment.properties.outputs.keyVaultName.value)" >> $env:GITHUB_OUTPUT
           "api_url=$($deployment.properties.outputs.apiUrl.value)" >> $env:GITHUB_OUTPUT
           "web_url=$($deployment.properties.outputs.webUrl.value)" >> $env:GITHUB_OUTPUT
-
-      - name: Seed Key Vault secrets
-        shell: pwsh
-        run: |
-          $vaultName = "${{ steps.deploy.outputs.key_vault_name }}"
-
-          function Set-SecretIfPresent($name, $value) {
-            if (![string]::IsNullOrWhiteSpace($value)) {
-              az keyvault secret set --vault-name $vaultName --name $name --value $value | Out-Null
-            }
-          }
-
-          Set-SecretIfPresent "openai-api-key" "${{ secrets.OPENAI_API_KEY }}"
-          Set-SecretIfPresent "anthropic-api-key" "${{ secrets.ANTHROPIC_API_KEY }}"
-          Set-SecretIfPresent "azure-speech-key" "${{ secrets.AZURE_SPEECH_KEY }}"
-          Set-SecretIfPresent "github-token" "${{ secrets.ORCH_GITHUB_RUNTIME_TOKEN }}"
-          Set-SecretIfPresent "github-app-private-key" "${{ secrets.ORCH_GITHUB_APP_PRIVATE_KEY }}"
-          Set-SecretIfPresent "github-webhook-secret" "${{ secrets.ORCH_GITHUB_WEBHOOK_SECRET }}"
 
       - name: Echo deployed endpoints
         shell: pwsh

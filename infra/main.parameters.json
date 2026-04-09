@@ -14,6 +14,24 @@
     "entraClientId": {
       "value": ""
     },
+    "openAiApiKey": {
+      "value": ""
+    },
+    "anthropicApiKey": {
+      "value": ""
+    },
+    "azureSpeechKey": {
+      "value": ""
+    },
+    "githubRuntimeToken": {
+      "value": ""
+    },
+    "githubAppPrivateKey": {
+      "value": ""
+    },
+    "githubWebhookSecret": {
+      "value": ""
+    },
     "webImage": {
       "value": "ghcr.io/assimalign/ai-dev-orchestrator-web:latest"
     },

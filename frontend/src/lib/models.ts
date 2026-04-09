@@ -111,6 +111,9 @@ export interface ConnectorDefinition {
   label: string;
   kind: string;
   description: string;
+  authMode: string;
+  capabilities: string[];
+  setupSummary: string;
   enabled: boolean;
 }
 
@@ -122,4 +125,14 @@ export interface ConnectorRepositoryReference {
   private: boolean;
   description: string;
   url: string;
+}
+
+export interface ConnectorStatusResponse {
+  id: string;
+  label: string;
+  enabled: boolean;
+  status: string;
+  authMode: string;
+  repositoryCount: number;
+  message: string;
 }

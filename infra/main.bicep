@@ -30,6 +30,30 @@ param entraTenantId string = ''
 @description('Microsoft Entra client ID for the SPA/API app registration.')
 param entraClientId string = ''
 
+@secure()
+@description('OpenAI API key stored in Key Vault for runtime access. Leave empty to skip creation.')
+param openAiApiKey string = ''
+
+@secure()
+@description('Anthropic API key stored in Key Vault for runtime access. Leave empty to skip creation.')
+param anthropicApiKey string = ''
+
+@secure()
+@description('Azure Speech API key stored in Key Vault for runtime access. Leave empty to skip creation.')
+param azureSpeechKey string = ''
+
+@secure()
+@description('Optional GitHub personal access token stored in Key Vault. Leave empty when using a GitHub App.')
+param githubRuntimeToken string = ''
+
+@secure()
+@description('Optional GitHub App private key stored in Key Vault. Leave empty when using a personal token.')
+param githubAppPrivateKey string = ''
+
+@secure()
+@description('Optional GitHub webhook secret stored in Key Vault. Leave empty to skip creation.')
+param githubWebhookSecret string = ''
+
 @description('OpenAI model used for planning and synthesis.')
 param openAiModel string = 'gpt-5.4'
 
@@ -141,6 +165,54 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       family: 'A'
       name: 'standard'
     }
+  }
+}
+
+resource openAiApiKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(openAiApiKey)) {
+  parent: keyVault
+  name: 'openai-api-key'
+  properties: {
+    value: openAiApiKey
+  }
+}
+
+resource anthropicApiKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(anthropicApiKey)) {
+  parent: keyVault
+  name: 'anthropic-api-key'
+  properties: {
+    value: anthropicApiKey
+  }
+}
+
+resource azureSpeechKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(azureSpeechKey)) {
+  parent: keyVault
+  name: 'azure-speech-key'
+  properties: {
+    value: azureSpeechKey
+  }
+}
+
+resource githubRuntimeTokenSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(githubRuntimeToken)) {
+  parent: keyVault
+  name: 'github-token'
+  properties: {
+    value: githubRuntimeToken
+  }
+}
+
+resource githubAppPrivateKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(githubAppPrivateKey)) {
+  parent: keyVault
+  name: 'github-app-private-key'
+  properties: {
+    value: githubAppPrivateKey
+  }
+}
+
+resource githubWebhookSecretResource 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(githubWebhookSecret)) {
+  parent: keyVault
+  name: 'github-webhook-secret'
+  properties: {
+    value: githubWebhookSecret
   }
 }
 

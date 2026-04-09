@@ -39,3 +39,14 @@ public sealed class GitHubContextQuery
         };
     }
 }
+
+public sealed class ConnectorStatusResponse
+{
+    public string Id { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public bool Enabled { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public string AuthMode { get; init; } = string.Empty;
+    public int RepositoryCount { get; init; }
+    public string Message { get; init; } = string.Empty;
+}
