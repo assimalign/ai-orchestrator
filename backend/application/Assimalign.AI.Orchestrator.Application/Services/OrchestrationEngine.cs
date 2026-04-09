@@ -60,31 +60,62 @@ public sealed class OrchestrationEngine(
                 await onStage(new StageUpdate { Status = ThreadStageStatus.Reviewing });
             }
 
-            review = await anthropicClient.CritiquePlanAsync(
-                input.Text,
-                plan,
-                context,
-                threadHistory,
-                input.Models?.Anthropic,
-                cancellationToken);
-            if (onStage is not null)
+            try
             {
-                await onStage(new StageUpdate
+                review = await anthropicClient.CritiquePlanAsync(
+                    input.Text,
+                    plan,
+                    context,
+                    threadHistory,
+                    input.Models?.Anthropic,
+                    cancellationToken);
+
+                if (onStage is not null)
                 {
-                    Status = ThreadStageStatus.Reviewing,
-                    Message = new ThreadMessage
+                    await onStage(new StageUpdate
                     {
-                        Id = Guid.NewGuid().ToString("D"),
-                        Role = ThreadMessageRole.Stage,
-                        Stage = ThreadStageStatus.Reviewing,
-                        Title = BuildStageTitle("Claude", input.Models?.Anthropic ?? anthropicClient.DefaultModel),
-                        Content = review.Message.Trim(),
-                        Provider = "claude",
-                        CreatedAt = DateTimeOffset.UtcNow,
-                        Metadata = BuildModelMetadata(
-                            input.Models?.Anthropic ?? anthropicClient.DefaultModel),
-                    },
-                });
+                        Status = ThreadStageStatus.Reviewing,
+                        Message = new ThreadMessage
+                        {
+                            Id = Guid.NewGuid().ToString("D"),
+                            Role = ThreadMessageRole.Stage,
+                            Stage = ThreadStageStatus.Reviewing,
+                            Title = BuildStageTitle("Claude", input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                            Content = review.Message.Trim(),
+                            Provider = "claude",
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            Metadata = BuildModelMetadata(
+                                input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                        },
+                    });
+                }
+            }
+            catch (Exception error)
+            {
+                review = new ReviewArtifact
+                {
+                    Message = BuildReviewFallbackMessage(error),
+                };
+
+                if (onStage is not null)
+                {
+                    await onStage(new StageUpdate
+                    {
+                        Status = ThreadStageStatus.Reviewing,
+                        Message = new ThreadMessage
+                        {
+                            Id = Guid.NewGuid().ToString("D"),
+                            Role = ThreadMessageRole.Stage,
+                            Stage = ThreadStageStatus.Failed,
+                            Title = BuildStageTitle("Claude unavailable", input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                            Content = review.Message,
+                            Provider = "claude",
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            Metadata = BuildModelMetadata(
+                                input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                        },
+                    });
+                }
             }
         }
         else
@@ -117,6 +148,18 @@ public sealed class OrchestrationEngine(
 
     private static string BuildStageTitle(string baseTitle, string modelId) =>
         string.IsNullOrWhiteSpace(modelId) ? baseTitle : $"{baseTitle} · {modelId}";
+
+    private static string BuildReviewFallbackMessage(Exception error)
+    {
+        var message = error.GetBaseException().Message;
+
+        if (message.Contains("credit balance is too low", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Claude review was skipped because the Anthropic API credit balance is too low for this run. The conversation continued with Codex only.";
+        }
+
+        return $"Claude review was skipped for this run. The conversation continued with Codex only. Details: {message}";
+    }
 
     private static Dictionary<string, string>? BuildModelMetadata(string? modelId) =>
         string.IsNullOrWhiteSpace(modelId)
