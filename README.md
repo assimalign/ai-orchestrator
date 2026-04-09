@@ -71,7 +71,6 @@ Set these repository variables:
 - `AZURE_LOCATION`
 - `AZURE_RESOURCE_GROUP`
 - `AZURE_BASE_NAME`
-- `ORCH_ENTRA_SCOPE` if you want to override the default `api://<client-id>/access_as_user`
 - `ORCH_GITHUB_APP_ID` if using a GitHub App
 - `ORCH_GITHUB_INSTALLATION_ID` if using a GitHub App
 

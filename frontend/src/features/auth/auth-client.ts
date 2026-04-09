@@ -33,11 +33,11 @@ function getClient() {
 }
 
 function getLoginScopes() {
-  return runtimeConfig.entraScope ? [runtimeConfig.entraScope] : ["openid", "profile"];
+  return ["openid", "profile"];
 }
 
 function getAccessScopes() {
-  return runtimeConfig.entraScope ? [runtimeConfig.entraScope] : ["openid", "profile"];
+  return [`api://${runtimeConfig.entraClientId}/access_as_user`];
 }
 
 function rememberReturnUrl() {

@@ -29,12 +29,6 @@ export const runtimeConfig = {
       import.meta.env.VITE_ENTRA_CLIENT_ID,
       "",
     ) ?? "",
-  entraScope:
-    pickValue(
-      window.__APP_CONFIG__?.entraScope,
-      import.meta.env.VITE_ENTRA_SCOPE,
-      "",
-    ) ?? "",
 };
 
 export function getAuthRedirectUri() {

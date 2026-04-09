@@ -34,17 +34,9 @@ public sealed class OrchestratorSettings
     public string GitHubAppPrivateKeySecretName { get; init; } = "github-app-private-key";
     public string? EntraTenantId { get; init; }
     public string? EntraClientId { get; init; }
-    public string? EntraScope { get; init; }
 
     public bool UsesServiceBus =>
         string.Equals(ExecutionMode, "servicebus", StringComparison.OrdinalIgnoreCase);
-
-    public string EffectiveEntraScope =>
-        !string.IsNullOrWhiteSpace(EntraScope)
-            ? EntraScope
-            : !string.IsNullOrWhiteSpace(EntraClientId)
-                ? $"api://{EntraClientId}/access_as_user"
-                : string.Empty;
 
     public ModelCatalog BuildModelCatalog() =>
         new()
@@ -121,7 +113,6 @@ public sealed class OrchestratorSettings
                 configuration["GITHUB_APP_PRIVATE_KEY_SECRET_NAME"] ?? "github-app-private-key",
             EntraTenantId = configuration["ENTRA_TENANT_ID"],
             EntraClientId = configuration["ENTRA_CLIENT_ID"],
-            EntraScope = configuration["ENTRA_SCOPE"],
         };
     }
 

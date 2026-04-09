@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "8306384948454891551"
+      "templateHash": "2783489977838764663"
     }
   },
   "parameters": {
@@ -74,13 +74,6 @@
       "defaultValue": "",
       "metadata": {
         "description": "Microsoft Entra client ID for the SPA/API app registration."
-      }
-    },
-    "entraScope": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Microsoft Entra scope requested by the SPA when calling the API."
       }
     },
     "openAiModel": {
@@ -356,10 +349,6 @@
               {
                 "name": "ENTRA_CLIENT_ID",
                 "value": "[parameters('entraClientId')]"
-              },
-              {
-                "name": "ENTRA_SCOPE",
-                "value": "[parameters('entraScope')]"
               },
               {
                 "name": "ORCHESTRATOR_TABLE_NAME",
@@ -908,10 +897,6 @@
               {
                 "name": "ENTRA_CLIENT_ID",
                 "value": "[parameters('entraClientId')]"
-              },
-              {
-                "name": "ENTRA_SCOPE",
-                "value": "[parameters('entraScope')]"
               },
               {
                 "name": "SPEECH_VOICE",

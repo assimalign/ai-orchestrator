@@ -14,9 +14,6 @@
     "entraClientId": {
       "value": ""
     },
-    "entraScope": {
-      "value": ""
-    },
     "webImage": {
       "value": "ghcr.io/assimalign/ai-dev-orchestrator-web:latest"
     },

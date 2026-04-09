@@ -30,9 +30,6 @@ param entraTenantId string = ''
 @description('Microsoft Entra client ID for the SPA/API app registration.')
 param entraClientId string = ''
 
-@description('Microsoft Entra scope requested by the SPA when calling the API.')
-param entraScope string = ''
-
 @description('OpenAI model used for planning and synthesis.')
 param openAiModel string = 'gpt-5.4'
 
@@ -222,10 +219,6 @@ module apiContainerApp 'modules/container-app.bicep' = {
       {
         name: 'ENTRA_CLIENT_ID'
         value: entraClientId
-      }
-      {
-        name: 'ENTRA_SCOPE'
-        value: entraScope
       }
       {
         name: 'ORCHESTRATOR_TABLE_NAME'
@@ -418,10 +411,6 @@ module webContainerApp 'modules/container-app.bicep' = {
       {
         name: 'ENTRA_CLIENT_ID'
         value: entraClientId
-      }
-      {
-        name: 'ENTRA_SCOPE'
-        value: entraScope
       }
       {
         name: 'SPEECH_VOICE'

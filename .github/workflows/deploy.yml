@@ -118,7 +118,6 @@ jobs:
             --parameters baseName="${env:AZURE_BASE_NAME}" `
                          entraTenantId="${{ secrets.AZURE_TENANT_ID }}" `
                          entraClientId="${{ secrets.AZURE_CLIENT_ID }}" `
-                         entraScope="${{ vars.ORCH_ENTRA_SCOPE || '' }}" `
                          location="${env:AZURE_LOCATION}" `
                          webImage="${{ needs.build-images.outputs.web_image }}" `
                          apiImage="${{ needs.build-images.outputs.api_image }}" `
