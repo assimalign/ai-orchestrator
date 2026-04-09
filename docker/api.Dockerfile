@@ -1,6 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+COPY backend/Directory.Build.props backend/
+COPY backend/Directory.Build.targets backend/
 COPY backend/core/Assimalign.AI.Orchestrator.Core/Assimalign.AI.Orchestrator.Core.csproj backend/core/Assimalign.AI.Orchestrator.Core/
 COPY backend/application/Assimalign.AI.Orchestrator.Application/Assimalign.AI.Orchestrator.Application.csproj backend/application/Assimalign.AI.Orchestrator.Application/
 COPY backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure/Assimalign.AI.Orchestrator.Infrastructure.csproj backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure/
