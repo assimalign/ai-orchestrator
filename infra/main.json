@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "4315570707360071509"
+      "templateHash": "14237877114475760718"
     }
   },
   "parameters": {
@@ -106,7 +106,7 @@
     "workerAppName": "[take(format('{0}-worker', parameters('baseName')), 32)]",
     "webAppName": "[take(format('{0}-web', parameters('baseName')), 32)]",
     "keyVaultSecretsUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
-    "keyVaultUrl": "[format('https://{0}.{1}/', variables('keyVaultName'), environment().suffixes.keyvaultDns)]"
+    "keyVaultUrl": "[format('https://{0}{1}/', variables('keyVaultName'), environment().suffixes.keyvaultDns)]"
   },
   "resources": [
     {

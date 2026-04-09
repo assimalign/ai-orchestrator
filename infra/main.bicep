@@ -173,7 +173,7 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' 
 
 var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
 var serviceBusConnectionString = serviceBusRootAuthorizationRule.listKeys().primaryConnectionString
-var keyVaultUrl = 'https://${keyVault.name}.${environment().suffixes.keyvaultDns}/'
+var keyVaultUrl = 'https://${keyVault.name}${environment().suffixes.keyvaultDns}/'
 
 module apiContainerApp 'modules/container-app.bicep' = {
   name: 'apiContainerApp'
