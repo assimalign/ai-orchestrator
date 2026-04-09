@@ -39,21 +39,21 @@ function getLiveMessage(status: ConversationThreadDetail["thread"]["status"]) {
   switch (status) {
     case "planning":
       return {
-        provider: "Codex",
-        title: "Thinking through the first pass",
-        content: "Codex is working through the request and shaping the opening response.",
+        provider: "Codex + Claude",
+        title: "Drafting first responses",
+        content: "Codex and Claude are each preparing their own first take before they compare notes.",
       };
     case "reviewing":
       return {
-        provider: "Claude",
-        title: "Reviewing the approach",
-        content: "Claude is pressure-testing the plan before the answer comes back.",
+        provider: "Codex + Claude",
+        title: "Comparing approaches",
+        content: "Both models are discussing their reasoning, reconciling differences, and pushing toward one direction.",
       };
     case "synthesizing":
       return {
         provider: "Codex",
-        title: "Pulling the answer together",
-        content: "Codex is folding the back-and-forth into the response you’ll see here.",
+        title: "Turning agreement into action",
+        content: "Codex is converting the shared agreement into the response and execution plan you’ll see here.",
       };
     default:
       return undefined;

@@ -193,6 +193,7 @@ public sealed class GitHubContextSnapshot
 public sealed class PlanningArtifact
 {
     public string Message { get; set; } = string.Empty;
+    public string Reasoning { get; set; } = string.Empty;
     public bool RequiresRepositoryAccess { get; set; }
     public bool RequiresImplementation { get; set; }
     public string? SuggestedBranchName { get; set; }
@@ -201,17 +202,25 @@ public sealed class PlanningArtifact
 public sealed class ReviewArtifact
 {
     public string Message { get; set; } = string.Empty;
+    public string Reasoning { get; set; } = string.Empty;
     public bool IsAligned { get; set; }
     public bool NeedsUserDecision { get; set; }
     public string? UserDecisionPrompt { get; set; }
+    public bool RequiresRepositoryAccess { get; set; }
+    public bool RequiresImplementation { get; set; }
+    public string? SuggestedBranchName { get; set; }
 }
 
 public sealed class DebateArtifact
 {
     public string Message { get; set; } = string.Empty;
+    public string Reasoning { get; set; } = string.Empty;
     public bool IsAligned { get; set; }
     public bool NeedsUserDecision { get; set; }
     public string? UserDecisionPrompt { get; set; }
+    public bool RequiresRepositoryAccess { get; set; }
+    public bool RequiresImplementation { get; set; }
+    public string? SuggestedBranchName { get; set; }
 }
 
 public sealed class ProviderPromptRequest
@@ -289,6 +298,8 @@ public sealed class OrchestrationResult
 {
     public GitHubContextSnapshot? Context { get; set; }
     public RepositoryTarget? Repository { get; set; }
+    public PlanningArtifact? CodexOpening { get; init; }
+    public PlanningArtifact? ClaudeOpening { get; init; }
     public required PlanningArtifact Plan { get; init; }
     public required ReviewArtifact Review { get; init; }
     public DebateArtifact? Debate { get; init; }

@@ -14,8 +14,8 @@ export function StatusPill({ status }: { status: ThreadStageStatus }) {
     {
       queued: "queued",
       planning: "opening",
-      reviewing: "debating",
-      synthesizing: "deciding",
+      reviewing: "comparing",
+      synthesizing: "agreeing",
       completed: "ready",
       failed: "failed",
     }[status] ?? status;

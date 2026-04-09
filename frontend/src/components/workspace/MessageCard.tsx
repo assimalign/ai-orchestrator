@@ -1,4 +1,5 @@
 import type { ThreadMessage } from "../../lib/models";
+import { MarkdownContent } from "../ui/MarkdownContent";
 import { StatusPill } from "../ui/StatusPill";
 
 export function MessageCard({ message }: { message: ThreadMessage }) {
@@ -26,9 +27,10 @@ export function MessageCard({ message }: { message: ThreadMessage }) {
           </span>
         </div>
         <h4 className="mt-4 text-sm font-semibold text-white">{message.title}</h4>
-        <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">
-          {message.content}
-        </div>
+        <MarkdownContent
+          className="mt-3 break-words text-sm leading-7 text-slate-300"
+          content={message.content}
+        />
       </article>
     );
   }
@@ -51,9 +53,10 @@ export function MessageCard({ message }: { message: ThreadMessage }) {
           {new Date(message.createdAt).toLocaleTimeString()}
         </span>
       </div>
-      <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-200">
-        {message.content}
-      </div>
+      <MarkdownContent
+        className="mt-3 break-words text-sm leading-7 text-slate-200"
+        content={message.content}
+      />
     </article>
   );
 }

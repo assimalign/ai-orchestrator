@@ -28,6 +28,14 @@ public static class PromptEnvelopeFormatter
             lines.Add(string.Empty);
             lines.Add("Codex draft:");
             lines.Add(request.Plan.Message);
+
+            if (!string.IsNullOrWhiteSpace(request.Plan.Reasoning))
+            {
+                lines.Add(string.Empty);
+                lines.Add("Codex reasoning:");
+                lines.Add(request.Plan.Reasoning);
+            }
+
             lines.Add(string.Empty);
             lines.Add($"Requires repository access: {(request.Plan.RequiresRepositoryAccess ? "yes" : "no")}");
             lines.Add(string.Empty);
@@ -45,8 +53,26 @@ public static class PromptEnvelopeFormatter
             lines.Add(string.Empty);
             lines.Add("Claude feedback:");
             lines.Add(request.Review.Message);
+
+            if (!string.IsNullOrWhiteSpace(request.Review.Reasoning))
+            {
+                lines.Add(string.Empty);
+                lines.Add("Claude reasoning:");
+                lines.Add(request.Review.Reasoning);
+            }
+
             lines.Add(string.Empty);
             lines.Add($"Claude aligned: {(request.Review.IsAligned ? "yes" : "no")}");
+            lines.Add(string.Empty);
+            lines.Add($"Claude requires repository access: {(request.Review.RequiresRepositoryAccess ? "yes" : "no")}");
+            lines.Add(string.Empty);
+            lines.Add($"Claude requires implementation: {(request.Review.RequiresImplementation ? "yes" : "no")}");
+
+            if (!string.IsNullOrWhiteSpace(request.Review.SuggestedBranchName))
+            {
+                lines.Add(string.Empty);
+                lines.Add($"Claude suggested branch name: {request.Review.SuggestedBranchName}");
+            }
 
             if (request.Review.NeedsUserDecision)
             {
@@ -65,8 +91,26 @@ public static class PromptEnvelopeFormatter
             lines.Add(string.Empty);
             lines.Add("Latest Codex position:");
             lines.Add(request.Debate.Message);
+
+            if (!string.IsNullOrWhiteSpace(request.Debate.Reasoning))
+            {
+                lines.Add(string.Empty);
+                lines.Add("Codex reasoning:");
+                lines.Add(request.Debate.Reasoning);
+            }
+
             lines.Add(string.Empty);
             lines.Add($"Codex aligned: {(request.Debate.IsAligned ? "yes" : "no")}");
+            lines.Add(string.Empty);
+            lines.Add($"Codex requires repository access: {(request.Debate.RequiresRepositoryAccess ? "yes" : "no")}");
+            lines.Add(string.Empty);
+            lines.Add($"Codex requires implementation: {(request.Debate.RequiresImplementation ? "yes" : "no")}");
+
+            if (!string.IsNullOrWhiteSpace(request.Debate.SuggestedBranchName))
+            {
+                lines.Add(string.Empty);
+                lines.Add($"Codex suggested branch name: {request.Debate.SuggestedBranchName}");
+            }
 
             if (request.Debate.NeedsUserDecision)
             {

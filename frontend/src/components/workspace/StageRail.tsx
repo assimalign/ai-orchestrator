@@ -20,7 +20,7 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
             Codex and Claude handoff
           </h3>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            The stage rail keeps the thread readable while still showing where work is queued, reviewed, and synthesized.
+            The stage rail keeps the thread readable while still showing the parallel openings, comparison rounds, and final agreement.
           </p>
         </div>
         <StatusPill status={activeStatus ?? "queued"} />
@@ -50,18 +50,18 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
             />
             <StagePlaceholder
               stage="planning"
-              provider="Codex"
-              description="Codex sketches an approach in a natural engineering conversation."
+              provider="Codex + Claude"
+              description="Codex and Claude draft their own first-pass responses in parallel."
             />
             <StagePlaceholder
               stage="reviewing"
-              provider="Claude"
-              description="Claude pressure-tests the approach and pushes on gaps or risks."
+              provider="Codex + Claude"
+              description="Both models compare their responses, discuss reasoning, and push toward alignment."
             />
             <StagePlaceholder
               stage="synthesizing"
               provider="Codex"
-              description="Codex folds the back-and-forth into the reply that comes back to you."
+              description="Once aligned, Codex turns the agreement into the plan that drives the actual task."
             />
           </>
         )}
@@ -123,9 +123,9 @@ function labelForStage(stage: ThreadStageStatus) {
   return (
     {
       queued: "Thread dispatch",
-      planning: "Codex reply",
-      reviewing: "Claude pushback",
-      synthesizing: "Codex decision",
+      planning: "Parallel openings",
+      reviewing: "Model comparison",
+      synthesizing: "Shared agreement",
       completed: "Completed",
       failed: "Failed",
     }[stage] ?? stage
@@ -143,18 +143,18 @@ function getLiveStage(status: ThreadStageStatus) {
   switch (status) {
     case "planning":
       return {
-        provider: "Codex",
-        message: "Codex is thinking through the first pass.",
+        provider: "Codex + Claude",
+        message: "Codex and Claude are drafting their first responses in parallel.",
       };
     case "reviewing":
       return {
-        provider: "Claude",
-        message: "Claude is reviewing the approach and pushing on gaps.",
+        provider: "Codex + Claude",
+        message: "Both models are comparing responses, reasoning through differences, and tightening the plan.",
       };
     case "synthesizing":
       return {
         provider: "Codex",
-        message: "Codex is pulling the debate back into one answer.",
+        message: "Codex is turning the shared agreement into the plan that drives the task.",
       };
     default:
       return undefined;
