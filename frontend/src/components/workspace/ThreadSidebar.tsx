@@ -19,7 +19,7 @@ export function ThreadSidebar({
   threads,
 }: ThreadSidebarProps) {
   return (
-    <aside className="flex min-h-[calc(100vh-2rem)] flex-col rounded-[2rem] border border-white/10 bg-black/20 p-4 backdrop-blur">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-black/20 p-4 backdrop-blur">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-sage-300">

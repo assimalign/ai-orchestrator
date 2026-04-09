@@ -201,13 +201,13 @@ function ToolbarSelect({
     <label className="relative inline-flex items-center">
       <span className="sr-only">{label}</span>
       <select
-        className="appearance-none rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+        className="appearance-none rounded-full border border-white/10 bg-[#343436] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-[#3c3c3f] disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled || options.length === 0}
         value={resolvedValue}
         onChange={(event) => onChange(event.target.value)}
       >
         {options.map((option) => (
-          <option key={option.id} value={option.id}>
+          <option key={option.id} value={option.id} className="bg-[#343436] text-slate-100">
             {option.label}
           </option>
         ))}

@@ -54,7 +54,7 @@ public sealed class OrchestrationProcessor(
             thread.LastMessagePreview = BuildPreview(result.Summary);
             thread.Error = null;
 
-            if (thread.Repository is not null)
+            if (thread.Repository is not null && result.Plan.RequiresImplementation)
             {
                 await PrepareWorkingBranchAsync(
                     thread,

@@ -13,7 +13,7 @@ export function WorkspacePage() {
   const workspace = useWorkspace(auth.isAuthenticated);
 
   return (
-    <div className="mx-auto grid min-h-screen max-w-[1600px] gap-4 px-4 py-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="mx-auto grid h-screen max-h-screen max-w-[1600px] gap-4 overflow-hidden px-4 py-4 xl:grid-cols-[320px_minmax(0,1fr)]">
       <ThreadSidebar
         accountLabel={auth.accountLabel}
         activeThreadId={workspace.activeThread?.id}
@@ -23,7 +23,7 @@ export function WorkspacePage() {
         threads={workspace.threads}
       />
 
-      <main className="flex min-h-[calc(100vh-2rem)] flex-col rounded-[2rem] border border-white/10 bg-black/20 p-5 backdrop-blur">
+      <main className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-black/20 p-5 backdrop-blur">
         <WorkspaceHeader
           activeThread={workspace.activeThread}
           config={workspace.config}
@@ -41,7 +41,7 @@ export function WorkspacePage() {
           messages={workspace.stageMessages}
         />
 
-        <section className="mt-6 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto]">
+        <section className="mt-6 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
           <ConversationFeed threadDetail={workspace.threadDetail} />
           <ComposerPanel
             anthropicModel={workspace.anthropicModel}

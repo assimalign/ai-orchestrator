@@ -155,6 +155,7 @@ public sealed class GitHubContextSnapshot
 public sealed class PlanningArtifact
 {
     public string Message { get; set; } = string.Empty;
+    public bool RequiresImplementation { get; set; }
     public string? SuggestedBranchName { get; set; }
 }
 

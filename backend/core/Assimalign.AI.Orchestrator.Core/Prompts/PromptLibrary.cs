@@ -9,6 +9,7 @@ public static class PromptLibrary
         Return strict JSON with this shape:
         {
           "message": string,
+          "requiresImplementation": boolean,
           "suggestedBranchName": string
         }
 
@@ -17,7 +18,9 @@ public static class PromptLibrary
         - You may use short bullets if they genuinely help, but avoid rigid sections like "Objective", "First tasks", or "Key risks".
         - Prefer practical repository and branch execution details over issue-tracking language.
         - If the user is just being conversational or asking for something simple, answer simply and do not force repository workflow into the response.
-        - Suggest a branch name that is safe for git refs.
+        - If the request genuinely needs code or repository work, set "requiresImplementation" to true and suggest a branch name that is safe for git refs.
+        - If the request is a greeting, test, UX check, clarification, or general conversation, set "requiresImplementation" to false and leave "suggestedBranchName" empty.
+        - For simple requests, keep "message" to one or two short paragraphs at most.
         - Do not wrap the JSON in markdown fences.
         """;
 
@@ -34,6 +37,9 @@ public static class PromptLibrary
         - The "message" should read like an open-form chat reply to Codex, not a template.
         - Focus on correctness, delivery risk, integration gaps, and missing context.
         - Be concise but concrete.
+        - If Codex is overengineering a simple request, say so plainly and steer the response back to what the user actually asked for.
+        - For simple requests, keep the message very short.
+        - Prefer direct language over meta language. For example, say "Just say hello back" instead of narrating a review process.
         - Do not wrap the JSON in markdown fences.
         """;
 
@@ -46,6 +52,9 @@ public static class PromptLibrary
         - Do not sound templated.
         - Acknowledge good critique when it helps.
         - If Claude is overcomplicating the request, say so plainly and steer back to the user's actual need.
+        - If Claude is right that the request is simple, align quickly and do not narrate a process.
+        - Avoid phrases like "Proceeding with", "Recommended next steps", or other workflow narration unless the task truly needs that structure.
+        - For simple requests, the reply can be as short as one or two sentences.
         - Keep the reply focused and actionable.
         """;
 
@@ -59,6 +68,8 @@ public static class PromptLibrary
         - If the request is simple, answer simply.
         - Keep the response grounded in the repository and branch workflow when relevant.
         - Fold Claude's critique into the answer naturally instead of narrating an internal process.
-        - End with the concrete implementation direction or next action.
+        - If no implementation is needed, do not mention branches, commits, or workflow.
+        - For simple conversational requests, reply directly and minimally.
+        - End with the concrete implementation direction or next action only when implementation is actually needed.
         """;
 }

@@ -161,6 +161,9 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
             lines.Add("Codex draft:");
             lines.Add(plan.Message);
 
+            lines.Add(string.Empty);
+            lines.Add($"Requires implementation: {(plan.RequiresImplementation ? "yes" : "no")}");
+
             if (!string.IsNullOrWhiteSpace(plan.SuggestedBranchName))
             {
                 lines.Add(string.Empty);

@@ -56,6 +56,7 @@ public sealed class AnthropicReviewClient(HttpClient httpClient, string apiKey, 
                                         string.Empty,
                                         "Codex draft:",
                                         plan.Message,
+                                        $"Requires implementation: {(plan.RequiresImplementation ? "yes" : "no")}",
                                         string.IsNullOrWhiteSpace(plan.SuggestedBranchName)
                                             ? string.Empty
                                             : $"Suggested branch name: {plan.SuggestedBranchName}",
