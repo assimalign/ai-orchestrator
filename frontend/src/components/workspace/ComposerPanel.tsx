@@ -60,7 +60,7 @@ export function ComposerPanel({
   }
 
   return (
-    <section className="mt-5 space-y-3">
+    <section className="mt-5 shrink-0 space-y-3">
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,0.8fr))]">
         <CompactField
           label="Repository"

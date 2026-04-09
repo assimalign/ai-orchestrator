@@ -7,7 +7,7 @@ export function ConversationFeed({
   threadDetail?: ConversationThreadDetail;
 }) {
   return (
-    <div className="min-h-0 space-y-4 overflow-y-auto pb-4 pr-2">
+    <div className="min-h-[22rem] max-h-[min(42rem,55vh)] flex-1 space-y-4 overflow-y-auto pb-5 pr-2">
       {threadDetail?.messages?.length ? (
         threadDetail.messages.map((message) => (
           <MessageCard key={message.id} message={message} />
