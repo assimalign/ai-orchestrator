@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <UserSecretsId>dotnet-Worker-08395af9-8fa2-4346-b0c7-1f9f6e605f3a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Application" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Core" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure" />
+  </ItemGroup>
+
+</Project>

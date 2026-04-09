@@ -1,0 +1,11 @@
+<Project>
+    <!-- Resolved Project References by name alone. However the <AiOrchestratorRepositoryDirectory /> is required in the Directory.Build.props -->
+    <ItemGroup>
+        <_AiOrchestratorProject Include="$(AiOrchestratorRepositoryDirectory)**\*.csproj" Exclude="$(AiOrchestratorRepositoryDirectory)**\bin\**;$(AiOrchestratorRepositoryDirectory)**\obj\**" />
+        <_AiOrchestratorProject Update="@(_AiOrchestratorProject)" ProjectId="%(_AiOrchestratorProject.Filename)" ProjectPath="%(_AiOrchestratorProject.Identity)" />
+        <AiOrchestratorProjectReference Update="@(_AiOrchestratorProject->'%(ProjectId)')" ProjectPath="%(_AiOrchestratorProject.ProjectPath)" />
+        <ProjectReference Include="@(AiOrchestratorProjectReference->'%(ProjectPath)')" />
+        <AiOrchestratorProjectReference Remove="@(AiOrchestratorProjectReference->HasMetadata('ProjectPath'))" />
+        <_AiOrchestratorProject Remove="@(_AiOrchestratorProject)" />
+    </ItemGroup>
+</Project>

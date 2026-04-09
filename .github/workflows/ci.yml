@@ -13,20 +13,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Restore backend
+        run: dotnet restore Assimalign.AI.Orchestrator.slnx
 
-      - name: Typecheck
-        run: npm run check
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
 
-      - name: Test
-        run: npm run test
+      - name: Build backend
+        run: dotnet build Assimalign.AI.Orchestrator.slnx
 
-      - name: Build
-        run: npm run build
+      - name: Typecheck frontend
+        run: npm run typecheck --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend

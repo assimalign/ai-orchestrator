@@ -2,25 +2,13 @@
   "name": "ai-dev-orchestrator",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "build": "npm run build --workspace @ai-dev-orchestrator/shared && npm run build --workspace @ai-dev-orchestrator/orchestrator-core && npm run build --workspace @ai-dev-orchestrator/api && npm run build --workspace @ai-dev-orchestrator/worker && npm run build --workspace @ai-dev-orchestrator/web",
-    "check": "npm run build --workspace @ai-dev-orchestrator/shared && npm run build --workspace @ai-dev-orchestrator/orchestrator-core && npm run typecheck --workspace @ai-dev-orchestrator/api && npm run typecheck --workspace @ai-dev-orchestrator/worker && npm run typecheck --workspace @ai-dev-orchestrator/web",
-    "test": "npm run test --workspace @ai-dev-orchestrator/orchestrator-core --if-present"
-  },
-  "devDependencies": {
-    "@types/node": "^24.6.0",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "@vitejs/plugin-react": "^4.4.1",
-    "jsdom": "^27.0.0",
-    "tsx": "^4.20.6",
-    "typescript": "^5.9.3",
-    "vite": "^5.4.19",
-    "vitest": "^3.2.4"
+    "frontend:dev": "npm run dev --prefix frontend",
+    "frontend:build": "npm run build --prefix frontend",
+    "frontend:typecheck": "npm run typecheck --prefix frontend",
+    "api:dev": "dotnet run --project backend/services/Assimalign.AI.Orchestrator.Api/Assimalign.AI.Orchestrator.Api.csproj",
+    "worker:dev": "dotnet run --project backend/services/Assimalign.AI.Orchestrator.Worker/Assimalign.AI.Orchestrator.Worker.csproj",
+    "build": "dotnet build Assimalign.AI.Orchestrator.slnx && npm run build --prefix frontend",
+    "check": "dotnet build Assimalign.AI.Orchestrator.slnx && npm run typecheck --prefix frontend"
   }
 }

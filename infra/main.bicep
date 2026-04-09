@@ -24,9 +24,6 @@ param githubInstallationId string = ''
 @description('Speech voice used by the web experience for playback.')
 param speechVoice string = 'en-US-JennyNeural'
 
-@description('Enable Microsoft Entra authentication for the web app and API.')
-param authEnabled bool = false
-
 @description('Microsoft Entra tenant ID for MSAL sign-in and API token validation.')
 param entraTenantId string = ''
 
@@ -219,10 +216,6 @@ module apiContainerApp 'modules/container-app.bicep' = {
         value: '*'
       }
       {
-        name: 'AUTH_ENABLED'
-        value: string(authEnabled)
-      }
-      {
         name: 'ENTRA_TENANT_ID'
         value: entraTenantId
       }
@@ -235,11 +228,11 @@ module apiContainerApp 'modules/container-app.bicep' = {
         value: entraScope
       }
       {
-        name: 'RUNS_TABLE_NAME'
-        value: 'orchestratorruns'
+        name: 'ORCHESTRATOR_TABLE_NAME'
+        value: 'orchestratorstate'
       }
       {
-        name: 'SERVICE_BUS_QUEUE_NAME'
+        name: 'ORCHESTRATOR_QUEUE_NAME'
         value: queueName
       }
       {
@@ -325,11 +318,11 @@ module workerContainerApp 'modules/container-app.bicep' = {
     ]
     env: [
       {
-        name: 'RUNS_TABLE_NAME'
-        value: 'orchestratorruns'
+        name: 'ORCHESTRATOR_TABLE_NAME'
+        value: 'orchestratorstate'
       }
       {
-        name: 'SERVICE_BUS_QUEUE_NAME'
+        name: 'ORCHESTRATOR_QUEUE_NAME'
         value: queueName
       }
       {
@@ -417,10 +410,6 @@ module webContainerApp 'modules/container-app.bicep' = {
       {
         name: 'API_BASE_URL'
         value: 'https://${apiContainerApp.outputs.fqdn}'
-      }
-      {
-        name: 'AUTH_ENABLED'
-        value: string(authEnabled)
       }
       {
         name: 'ENTRA_TENANT_ID'

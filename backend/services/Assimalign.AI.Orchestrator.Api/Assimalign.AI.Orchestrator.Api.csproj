@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Application" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Core" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure" />
+  </ItemGroup>
+
+</Project>

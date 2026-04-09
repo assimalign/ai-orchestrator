@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.42.1.51946",
-      "templateHash": "13574616218668282655"
+      "version": "0.39.26.7824",
+      "templateHash": "8306384948454891551"
     }
   },
   "parameters": {
@@ -60,13 +60,6 @@
       "defaultValue": "en-US-JennyNeural",
       "metadata": {
         "description": "Speech voice used by the web experience for playback."
-      }
-    },
-    "authEnabled": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Enable Microsoft Entra authentication for the web app and API."
       }
     },
     "entraTenantId": {
@@ -260,7 +253,7 @@
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+      "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('keyVaultName'))]",
       "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), variables('apiAppName'), 'kv-secrets-user')]",
       "properties": {
         "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'apiContainerApp'), '2025-04-01').outputs.principalId.value]",
@@ -275,7 +268,7 @@
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+      "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('keyVaultName'))]",
       "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), variables('workerAppName'), 'kv-secrets-user')]",
       "properties": {
         "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'workerContainerApp'), '2025-04-01').outputs.principalId.value]",
@@ -357,10 +350,6 @@
                 "value": "*"
               },
               {
-                "name": "AUTH_ENABLED",
-                "value": "[string(parameters('authEnabled'))]"
-              },
-              {
                 "name": "ENTRA_TENANT_ID",
                 "value": "[parameters('entraTenantId')]"
               },
@@ -373,11 +362,11 @@
                 "value": "[parameters('entraScope')]"
               },
               {
-                "name": "RUNS_TABLE_NAME",
-                "value": "orchestratorruns"
+                "name": "ORCHESTRATOR_TABLE_NAME",
+                "value": "orchestratorstate"
               },
               {
-                "name": "SERVICE_BUS_QUEUE_NAME",
+                "name": "ORCHESTRATOR_QUEUE_NAME",
                 "value": "[variables('queueName')]"
               },
               {
@@ -441,8 +430,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "9818690339990934386"
+              "version": "0.39.26.7824",
+              "templateHash": "14259550981304631231"
             }
           },
           "parameters": {
@@ -642,11 +631,11 @@
           "env": {
             "value": [
               {
-                "name": "RUNS_TABLE_NAME",
-                "value": "orchestratorruns"
+                "name": "ORCHESTRATOR_TABLE_NAME",
+                "value": "orchestratorstate"
               },
               {
-                "name": "SERVICE_BUS_QUEUE_NAME",
+                "name": "ORCHESTRATOR_QUEUE_NAME",
                 "value": "[variables('queueName')]"
               },
               {
@@ -723,8 +712,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "9818690339990934386"
+              "version": "0.39.26.7824",
+              "templateHash": "14259550981304631231"
             }
           },
           "parameters": {
@@ -913,10 +902,6 @@
                 "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'apiContainerApp'), '2025-04-01').outputs.fqdn.value)]"
               },
               {
-                "name": "AUTH_ENABLED",
-                "value": "[string(parameters('authEnabled'))]"
-              },
-              {
                 "name": "ENTRA_TENANT_ID",
                 "value": "[parameters('entraTenantId')]"
               },
@@ -941,8 +926,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "9818690339990934386"
+              "version": "0.39.26.7824",
+              "templateHash": "14259550981304631231"
             }
           },
           "parameters": {

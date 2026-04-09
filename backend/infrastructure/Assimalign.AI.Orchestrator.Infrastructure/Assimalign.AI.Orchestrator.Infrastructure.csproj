@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.20.0" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.9.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Application" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Core" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Messaging" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Storage" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables" />
+  </ItemGroup>
+
+</Project>

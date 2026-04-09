@@ -1,33 +1,26 @@
-FROM node:20-alpine AS build
-WORKDIR /app
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
 
-COPY package.json package-lock.json tsconfig.base.json ./
-COPY apps/api/package.json apps/api/package.json
-COPY apps/worker/package.json apps/worker/package.json
-COPY apps/web/package.json apps/web/package.json
-COPY packages/shared/package.json packages/shared/package.json
-COPY packages/orchestrator-core/package.json packages/orchestrator-core/package.json
+COPY backend/core/Assimalign.AI.Orchestrator.Core/Assimalign.AI.Orchestrator.Core.csproj backend/core/Assimalign.AI.Orchestrator.Core/
+COPY backend/application/Assimalign.AI.Orchestrator.Application/Assimalign.AI.Orchestrator.Application.csproj backend/application/Assimalign.AI.Orchestrator.Application/
+COPY backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure/Assimalign.AI.Orchestrator.Infrastructure.csproj backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure/
+COPY backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging/Assimalign.AI.Orchestrator.Infrastructure.Messaging.csproj backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging/
+COPY backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus/Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus.csproj backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus/
+COPY backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage/Assimalign.AI.Orchestrator.Infrastructure.Storage.csproj backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage/
+COPY backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory.csproj backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory/
+COPY backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables.csproj backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables/
+COPY backend/services/Assimalign.AI.Orchestrator.Api/Assimalign.AI.Orchestrator.Api.csproj backend/services/Assimalign.AI.Orchestrator.Api/
 
-RUN npm ci
+RUN dotnet restore backend/services/Assimalign.AI.Orchestrator.Api/Assimalign.AI.Orchestrator.Api.csproj
 
 COPY . .
-RUN npm run build --workspace @ai-dev-orchestrator/shared \
-  && npm run build --workspace @ai-dev-orchestrator/orchestrator-core \
-  && npm run build --workspace @ai-dev-orchestrator/api
+RUN dotnet publish backend/services/Assimalign.AI.Orchestrator.Api/Assimalign.AI.Orchestrator.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-FROM node:20-alpine AS runner
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=8080
+ENV ASPNETCORE_URLS=http://+:8080
 
-COPY --from=build /app/package.json /app/package-lock.json /app/
-COPY --from=build /app/node_modules /app/node_modules
-COPY --from=build /app/apps/api/package.json /app/apps/api/package.json
-COPY --from=build /app/apps/api/dist /app/apps/api/dist
-COPY --from=build /app/packages/shared/package.json /app/packages/shared/package.json
-COPY --from=build /app/packages/shared/dist /app/packages/shared/dist
-COPY --from=build /app/packages/orchestrator-core/package.json /app/packages/orchestrator-core/package.json
-COPY --from=build /app/packages/orchestrator-core/dist /app/packages/orchestrator-core/dist
+COPY --from=build /app/publish .
 
 EXPOSE 8080
-CMD ["node", "apps/api/dist/index.js"]
+ENTRYPOINT ["dotnet", "Assimalign.AI.Orchestrator.Api.dll"]

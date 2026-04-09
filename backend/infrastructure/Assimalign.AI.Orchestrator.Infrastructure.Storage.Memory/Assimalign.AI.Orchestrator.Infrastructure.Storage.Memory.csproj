@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Storage" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Core" />
+  </ItemGroup>
+
+</Project>

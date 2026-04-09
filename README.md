@@ -1,34 +1,59 @@
 # AI Dev Orchestrator
 
-`ai-dev-orchestrator` is a GitHub-centered Azure deployment that lets you speak a development request, route it through OpenAI and Claude, and keep durable run history while long-running work executes in the background.
+`ai-dev-orchestrator` is a GitHub-centered Azure deployment for a protected, thread-based development workspace. The frontend keeps long-lived conversations like Codex and Claude, while the backend runs a staged flow where Codex plans, Claude critiques, and Codex synthesizes the final response with thread history preserved across turns.
 
-## What is in this repo
+## Repo layout
 
-- `apps/web`: React voice UI for requirement intake, run monitoring, and summary playback
-- `apps/api`: Fastify API for speech token issuance, run creation, GitHub context lookup, and orchestration control
-- `apps/worker`: Queue-driven background worker that executes the multi-model flow
-- `packages/shared`: Shared run, artifact, and GitHub context contracts
-- `packages/orchestrator-core`: Provider clients, GitHub integration, storage, queue, and run processor logic
+- `frontend`: Vite + React UI with Microsoft Entra sign-in, a Codex-style thread sidebar, repository branch workflow controls, voice capture, and compact stage cards for Codex/Claude handoffs
+- `backend/services/Assimalign.AI.Orchestrator.Api`: ASP.NET Core API host
+- `backend/services/Assimalign.AI.Orchestrator.Worker`: .NET worker host for background processing
+- `backend/core/Assimalign.AI.Orchestrator.Core`: public-facing models, prompts, and shared core resources
+- `backend/application/Assimalign.AI.Orchestrator.Application`: orchestration use cases, configuration, and host-facing security/platform wiring
+- `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure*`: infrastructure abstractions plus concrete implementations for messaging, storage, and external integrations
+- `Assimalign.AI.Orchestrator.slnx`: root solution for the full backend and frontend verification flow
+
+Infrastructure projects follow an abstraction-first pattern. For example:
+
+- `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging`: messaging contracts
+- `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Messaging.ServiceBus`: Service Bus messaging implementation
+- `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage`: storage contracts
+- `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Memory`: in-memory storage implementation
+- `backend/infrastructure/Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables`: Azure Tables storage implementation
 - `infra`: Azure Container Apps, Storage, Service Bus, Speech, Log Analytics, App Insights, and Key Vault infrastructure
-- `.github/workflows`: CI and deployment automation
 
-## Orchestration flow
+## Local development
 
-1. The web app captures typed or spoken requirements.
-2. The API creates a run record and enqueues it.
-3. The worker loads GitHub context, asks OpenAI to build a plan, asks Claude to critique it, and asks OpenAI to synthesize the final brief.
-4. Run artifacts and status updates are stored in Azure Table Storage for the UI to poll.
+1. Copy `.env.example` to `.env` for the backend.
+2. Copy `frontend/.env.example` to `frontend/.env.local` for the frontend.
+3. Set `EXECUTION_MODE=inline` if you want to run without Service Bus locally.
+4. Provide `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, and your model keys.
+5. Install frontend dependencies:
 
-## GHCR deployment model
+```bash
+npm install --prefix frontend
+```
 
-Container Apps are configured to pull images from `ghcr.io`.
+6. Run the API:
 
-- The GitHub Actions deploy workflow builds three images and pushes them to GHCR.
-- Azure Container Apps use the public GHCR image URLs, so they do not require registry credentials at runtime.
-- You still need GitHub Actions package publishing permissions. The workflow uses the repository `GITHUB_TOKEN` with `packages: write`.
-- After the first push, ensure the GHCR packages are public if they are not already.
+```bash
+npm run api:dev
+```
 
-## Required GitHub configuration
+7. Run the frontend:
+
+```bash
+npm run frontend:dev
+```
+
+8. If you want queue-backed processing, run the worker too:
+
+```bash
+npm run worker:dev
+```
+
+The default Vite dev URL is `http://localhost:5173`.
+
+## GitHub configuration
 
 Set these repository secrets for deployment:
 
@@ -46,37 +71,19 @@ Set these repository variables:
 - `AZURE_LOCATION`
 - `AZURE_RESOURCE_GROUP`
 - `AZURE_BASE_NAME`
+- `ORCH_ENTRA_SCOPE` if you want to override the default `api://<client-id>/access_as_user`
 - `ORCH_GITHUB_APP_ID` if using a GitHub App
 - `ORCH_GITHUB_INSTALLATION_ID` if using a GitHub App
 
-For Microsoft Entra app auth, the deploy workflow now reuses:
+If you want the orchestrator to prepare working branches and promote them upstream, the GitHub token or GitHub App needs repository `Contents: write` permission.
+
+The deploy workflow always enables Microsoft Entra auth and reuses:
 
 - `AZURE_TENANT_ID`
 - `AZURE_CLIENT_ID`
 
-Set `ORCH_AUTH_ENABLED=true` to turn sign-in on, and optionally set `ORCH_ENTRA_SCOPE` if you do not want the default `api://<client-id>/access_as_user` scope.
-
-## Local development
-
-1. Copy `.env.example` to `.env`
-2. Set `EXECUTION_MODE=inline`
-3. Provide `OPENAI_API_KEY` and optionally `ANTHROPIC_API_KEY`
-4. Run `npm install`
-5. Run the services in separate terminals:
-
-```bash
-npm run dev --workspace @ai-dev-orchestrator/api
-npm run dev --workspace @ai-dev-orchestrator/web
-```
-
-For queue-backed local work, also configure Azure Storage and Service Bus connection strings plus the worker process:
-
-```bash
-npm run dev --workspace @ai-dev-orchestrator/worker
-```
-
 ## Deployment notes
 
-- The Bicep template creates Key Vault, but runtime model and GitHub secrets are seeded by the deploy workflow after infrastructure is up.
-- The API and worker use managed identity in Azure, and the signed-in Azure developer identity locally, to read secrets from Key Vault.
-- The current API CORS setting defaults to `*` for easy first deployment. Tighten that once your public web URL is stable.
+- The GitHub Actions deploy workflow builds public GHCR images and points Container Apps at those image tags.
+- The API and worker use managed identity in Azure and the signed-in Azure developer identity locally when accessing Key Vault.
+- The thread state is stored in Azure Table Storage and the worker queue runs through Azure Service Bus.

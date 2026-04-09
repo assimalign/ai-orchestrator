@@ -8,9 +8,6 @@
     "baseName": {
       "value": "ai-dev-orchestrator"
     },
-    "authEnabled": {
-      "value": false
-    },
     "entraTenantId": {
       "value": ""
     },

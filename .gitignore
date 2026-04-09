@@ -9,7 +9,8 @@ coverage/
 .DS_Store
 .turbo/
 .cache/
-apps/web/dist/
-apps/api/dist/
-apps/worker/dist/
 tmp/
+frontend/node_modules/
+frontend/dist/
+backend/**/bin/
+backend/**/obj/

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Storage" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Core" />
+  </ItemGroup>
+
+</Project>

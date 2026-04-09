@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Application" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Infrastructure.Messaging" />
+    <AiOrchestratorProjectReference Include="Assimalign.AI.Orchestrator.Core" />
+  </ItemGroup>
+
+</Project>
