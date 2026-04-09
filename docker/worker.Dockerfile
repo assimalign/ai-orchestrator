@@ -18,7 +18,7 @@ RUN dotnet restore backend/services/Assimalign.AI.Orchestrator.Worker/Assimalign
 COPY . .
 RUN dotnet publish backend/services/Assimalign.AI.Orchestrator.Worker/Assimalign.AI.Orchestrator.Worker.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runner
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
 WORKDIR /app
 
 COPY --from=build /app/publish .
