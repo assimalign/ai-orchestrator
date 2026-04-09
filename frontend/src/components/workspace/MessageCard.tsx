@@ -26,9 +26,9 @@ export function MessageCard({ message }: { message: ThreadMessage }) {
           </span>
         </div>
         <h4 className="mt-4 text-sm font-semibold text-white">{message.title}</h4>
-        <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-sm leading-7 text-slate-300">
+        <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">
           {message.content}
-        </pre>
+        </div>
       </article>
     );
   }
@@ -51,9 +51,9 @@ export function MessageCard({ message }: { message: ThreadMessage }) {
           {new Date(message.createdAt).toLocaleTimeString()}
         </span>
       </div>
-      <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-sm leading-7 text-slate-200">
+      <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-200">
         {message.content}
-      </pre>
+      </div>
     </article>
   );
 }

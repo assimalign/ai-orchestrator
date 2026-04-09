@@ -54,8 +54,11 @@ public sealed class AnthropicReviewClient(HttpClient httpClient, string apiKey, 
                                         "Thread history:",
                                         FormatThreadHistory(threadHistory),
                                         string.Empty,
-                                        "Plan:",
-                                        JsonExtraction.Serialize(plan),
+                                        "Codex draft:",
+                                        plan.Message,
+                                        string.IsNullOrWhiteSpace(plan.SuggestedBranchName)
+                                            ? string.Empty
+                                            : $"Suggested branch name: {plan.SuggestedBranchName}",
                                     }),
                             },
                         },

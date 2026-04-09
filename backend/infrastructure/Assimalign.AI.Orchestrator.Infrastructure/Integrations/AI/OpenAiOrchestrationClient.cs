@@ -131,15 +131,21 @@ public sealed class OpenAiOrchestrationClient(HttpClient httpClient, string apiK
         if (plan is not null)
         {
             lines.Add(string.Empty);
-            lines.Add("Plan:");
-            lines.Add(JsonExtraction.Serialize(plan));
+            lines.Add("Codex draft:");
+            lines.Add(plan.Message);
+
+            if (!string.IsNullOrWhiteSpace(plan.SuggestedBranchName))
+            {
+                lines.Add(string.Empty);
+                lines.Add($"Suggested branch name: {plan.SuggestedBranchName}");
+            }
         }
 
         if (review is not null)
         {
             lines.Add(string.Empty);
-            lines.Add("Review:");
-            lines.Add(JsonExtraction.Serialize(review));
+            lines.Add("Claude feedback:");
+            lines.Add(review.Message);
         }
 
         return string.Join(Environment.NewLine, lines);

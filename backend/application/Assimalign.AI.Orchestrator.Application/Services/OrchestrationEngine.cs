@@ -43,8 +43,8 @@ public sealed class OrchestrationEngine(
                     Id = Guid.NewGuid().ToString("D"),
                     Role = ThreadMessageRole.Stage,
                     Stage = ThreadStageStatus.Planning,
-                    Title = BuildStageTitle("Codex drafted the plan", input.Models?.OpenAi ?? openAiClient.DefaultModel),
-                    Content = FormatPlanningArtifact(plan),
+                    Title = BuildStageTitle("Codex", input.Models?.OpenAi ?? openAiClient.DefaultModel),
+                    Content = plan.Message.Trim(),
                     Provider = "codex",
                     CreatedAt = DateTimeOffset.UtcNow,
                     Metadata = BuildModelMetadata(input.Models?.OpenAi ?? openAiClient.DefaultModel),
@@ -77,10 +77,8 @@ public sealed class OrchestrationEngine(
                         Id = Guid.NewGuid().ToString("D"),
                         Role = ThreadMessageRole.Stage,
                         Stage = ThreadStageStatus.Reviewing,
-                        Title = BuildStageTitle(
-                            "Claude reviewed the plan",
-                            input.Models?.Anthropic ?? anthropicClient.DefaultModel),
-                        Content = FormatReviewArtifact(review),
+                        Title = BuildStageTitle("Claude", input.Models?.Anthropic ?? anthropicClient.DefaultModel),
+                        Content = review.Message.Trim(),
                         Provider = "claude",
                         CreatedAt = DateTimeOffset.UtcNow,
                         Metadata = BuildModelMetadata(
@@ -115,38 +113,6 @@ public sealed class OrchestrationEngine(
             Review = review,
             Summary = summary.Trim(),
         };
-    }
-
-    private static string FormatPlanningArtifact(PlanningArtifact plan)
-    {
-        var lines = new List<string>
-        {
-            $"Objective: {plan.Objective}",
-            string.Empty,
-            "First tasks:",
-        };
-
-        lines.AddRange(plan.FirstTasks.Take(3).Select(task => $"- {task}"));
-        lines.Add(string.Empty);
-        lines.Add("Key risks:");
-        lines.AddRange(plan.Risks.Take(2).Select(risk => $"- {risk}"));
-
-        return string.Join(Environment.NewLine, lines);
-    }
-
-    private static string FormatReviewArtifact(ReviewArtifact review)
-    {
-        var lines = new List<string>
-        {
-            "Watchouts:",
-        };
-
-        lines.AddRange(review.Concerns.Take(2).Select(item => $"- {item}"));
-        lines.Add(string.Empty);
-        lines.Add("Adjustments:");
-        lines.AddRange(review.Improvements.Take(2).Select(item => $"- {item}"));
-
-        return string.Join(Environment.NewLine, lines);
     }
 
     private static string BuildStageTitle(string baseTitle, string modelId) =>

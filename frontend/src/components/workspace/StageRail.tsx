@@ -37,17 +37,17 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
             <StagePlaceholder
               stage="planning"
               provider="Codex"
-              description="Codex drafts the implementation plan and first tasks."
+              description="Codex sketches an approach in a natural engineering conversation."
             />
             <StagePlaceholder
               stage="reviewing"
               provider="Claude"
-              description="Claude critiques the plan, surfaces gaps, and sharpens the approach."
+              description="Claude pressure-tests the approach and pushes on gaps or risks."
             />
             <StagePlaceholder
               stage="synthesizing"
               provider="Codex"
-              description="Codex folds the critique into the concise operator response."
+              description="Codex folds the back-and-forth into the reply that comes back to you."
             />
           </>
         )}
@@ -109,9 +109,9 @@ function labelForStage(stage: ThreadStageStatus) {
   return (
     {
       queued: "Thread dispatch",
-      planning: "Plan the work",
-      reviewing: "Critique the plan",
-      synthesizing: "Compose the answer",
+      planning: "Codex reply",
+      reviewing: "Claude reply",
+      synthesizing: "Final response",
       completed: "Completed",
       failed: "Failed",
     }[stage] ?? stage

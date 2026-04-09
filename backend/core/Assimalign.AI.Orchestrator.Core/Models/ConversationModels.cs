@@ -154,18 +154,13 @@ public sealed class GitHubContextSnapshot
 
 public sealed class PlanningArtifact
 {
-    public string Objective { get; set; } = string.Empty;
-    public List<string> Workstreams { get; set; } = [];
-    public List<string> Risks { get; set; } = [];
-    public List<string> FirstTasks { get; set; } = [];
+    public string Message { get; set; } = string.Empty;
     public string? SuggestedBranchName { get; set; }
 }
 
 public sealed class ReviewArtifact
 {
-    public List<string> Concerns { get; set; } = [];
-    public List<string> MissingContext { get; set; } = [];
-    public List<string> Improvements { get; set; } = [];
+    public string Message { get; set; } = string.Empty;
 }
 
 public sealed class OrchestrationResult
