@@ -80,6 +80,61 @@ public sealed class GitHubContextService : IGitHubContextService
         return userDocument.RootElement.EnumerateArray().Select(MapRepository).ToArray();
     }
 
+    public async Task<IReadOnlyList<ConnectorBranchReference>> ListBranchesAsync(
+        string owner,
+        string repo,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(owner);
+        ArgumentException.ThrowIfNullOrWhiteSpace(repo);
+
+        var token = await GetAccessTokenAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return Array.Empty<ConnectorBranchReference>();
+        }
+
+        var repositoryJson = await SendAsync(
+            $"repos/{owner}/{repo}",
+            token,
+            cancellationToken)
+            ?? throw new InvalidOperationException($"GitHub repository '{owner}/{repo}' could not be loaded.");
+
+        using var repositoryDocument = JsonDocument.Parse(repositoryJson);
+        var defaultBranch = repositoryDocument.RootElement.GetProperty("default_branch").GetString() ?? "main";
+
+        var branchesJson = await SendAsync(
+            $"repos/{owner}/{repo}/branches?per_page=100",
+            token,
+            cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(branchesJson))
+        {
+            return Array.Empty<ConnectorBranchReference>();
+        }
+
+        using var branchesDocument = JsonDocument.Parse(branchesJson);
+        return branchesDocument.RootElement
+            .EnumerateArray()
+            .Select(
+                branch => new ConnectorBranchReference
+                {
+                    ConnectorId = "github",
+                    Owner = owner,
+                    Repo = repo,
+                    Name = branch.GetProperty("name").GetString() ?? string.Empty,
+                    IsDefault = string.Equals(
+                        branch.GetProperty("name").GetString(),
+                        defaultBranch,
+                        StringComparison.OrdinalIgnoreCase),
+                    IsProtected = branch.TryGetProperty("protected", out var protectedProperty)
+                        && protectedProperty.GetBoolean(),
+                })
+            .OrderByDescending(branch => branch.IsDefault)
+            .ThenBy(branch => branch.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
     public Task<string?> GetAccessTokenForRepositoryOperationsAsync(
         CancellationToken cancellationToken = default) =>
         GetAccessTokenAsync(cancellationToken);

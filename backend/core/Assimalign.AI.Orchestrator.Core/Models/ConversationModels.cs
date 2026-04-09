@@ -70,6 +70,16 @@ public sealed class ConnectorRepositoryReference
     public string Url { get; set; } = string.Empty;
 }
 
+public sealed class ConnectorBranchReference
+{
+    public string ConnectorId { get; set; } = string.Empty;
+    public string Owner { get; set; } = string.Empty;
+    public string Repo { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public bool IsDefault { get; set; }
+    public bool IsProtected { get; set; }
+}
+
 public sealed class ConversationInput
 {
     public string Text { get; set; } = string.Empty;

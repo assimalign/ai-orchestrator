@@ -119,6 +119,7 @@ function formatModelLabel(modelId: string) {
       "gpt-5-codex": "GPT-5 Codex",
       "claude-sonnet-4-20250514": "Sonnet 4",
       "claude-opus-4-1-20250805": "Opus 4.1",
+      "claude-opus-4-20250514": "Opus 4",
       "claude-3-7-sonnet-20250219": "3.7 Sonnet",
     }[modelId] ?? modelId
   );

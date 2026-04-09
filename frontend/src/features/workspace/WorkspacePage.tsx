@@ -24,7 +24,7 @@ export function WorkspacePage() {
         threads={workspace.threads}
       />
 
-      <main className="flex min-h-[calc(100vh-2rem)] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-black/20 p-5 backdrop-blur">
+      <main className="flex min-h-[calc(100vh-2rem)] min-w-0 flex-col overflow-visible rounded-[2rem] border border-white/10 bg-black/20 p-5 backdrop-blur">
         <WorkspaceHeader
           activeThread={workspace.activeThread}
           config={workspace.config}
@@ -42,16 +42,19 @@ export function WorkspacePage() {
           messages={workspace.stageMessages}
         />
 
-        <section className="mt-6 flex min-h-[24rem] flex-1 flex-col overflow-hidden">
+        <section className="mt-6 flex min-h-0 flex-1 flex-col overflow-visible">
           <ConversationFeed threadDetail={workspace.threadDetail} />
           <ComposerPanel
             anthropicModel={workspace.anthropicModel}
             baseBranch={workspace.baseBranch}
+            branchOptions={workspace.connectorBranches}
             connectorId={workspace.connectorId}
             connectorRepositories={workspace.connectorRepositories}
             config={workspace.config}
+            createWorkingBranchFromDefault={workspace.createWorkingBranchFromDefault}
             draft={workspace.draft}
             hasActiveThread={Boolean(workspace.selectedThreadId)}
+            isLoadingBranches={workspace.isLoadingBranches}
             isLoadingRepositories={workspace.isLoadingRepositories}
             isListening={workspace.isListening}
             isSending={workspace.isSending}

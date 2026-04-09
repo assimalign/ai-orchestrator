@@ -6,6 +6,7 @@ import {
   getConfig,
   getSpeechToken,
   getThread,
+  listConnectorBranches,
   listConnectorRepositories,
   listThreads,
   postThreadMessage,
@@ -13,6 +14,7 @@ import {
 } from "../../lib/api";
 import type {
   AppConfigResponse,
+  ConnectorBranchReference,
   ConnectorDefinition,
   ConnectorRepositoryReference,
   ConnectorStatusResponse,
@@ -45,6 +47,7 @@ export function useWorkspace(enabled: boolean) {
   const [draft, setDraft] = useState("");
   const [connectorId, setConnectorId] = useState("github");
   const [connectorRepositories, setConnectorRepositories] = useState<ConnectorRepositoryReference[]>([]);
+  const [connectorBranches, setConnectorBranches] = useState<ConnectorBranchReference[]>([]);
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [baseBranch, setBaseBranch] = useState("");
@@ -53,6 +56,7 @@ export function useWorkspace(enabled: boolean) {
   const [anthropicModel, setAnthropicModel] = useState("");
   const [statusMessage, setStatusMessage] = useState("Preparing your workspace.");
   const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isConnectorManagerOpen, setIsConnectorManagerOpen] = useState(false);
   const [isLoadingConnectorStatuses, setIsLoadingConnectorStatuses] = useState(false);
   const [connectorStatuses, setConnectorStatuses] = useState<Record<string, ConnectorStatusResponse>>({});
@@ -169,6 +173,21 @@ export function useWorkspace(enabled: boolean) {
 
     void loadConnectorRepositories(connector.id, { preserveStatusMessage: true });
   }, [config, connectorId, enabled]);
+
+  useEffect(() => {
+    if (!enabled || !config || !owner || !repo) {
+      setConnectorBranches([]);
+      return;
+    }
+
+    const connector = resolveConnector(config.connectors, connectorId);
+    if (!connector?.enabled) {
+      setConnectorBranches([]);
+      return;
+    }
+
+    void loadConnectorBranches(connector.id, owner, repo, { preserveStatusMessage: true });
+  }, [config, connectorId, enabled, owner, repo]);
 
   async function loadShell() {
     try {
@@ -393,6 +412,56 @@ export function useWorkspace(enabled: boolean) {
     setStatusMessage(`Attached ${reference.owner}/${reference.repo} from ${formatConnectorLabel(reference.connectorId)}.`);
   }
 
+  async function loadConnectorBranches(
+    nextConnectorId: string,
+    nextOwner: string,
+    nextRepo: string,
+    options?: { preserveStatusMessage?: boolean },
+  ) {
+    if (!nextOwner.trim() || !nextRepo.trim()) {
+      setConnectorBranches([]);
+      return;
+    }
+
+    setIsLoadingBranches(true);
+
+    try {
+      const branches = await listConnectorBranches(nextConnectorId, nextOwner, nextRepo);
+      setConnectorBranches(branches);
+
+      const defaultBranchName =
+        branches.find((branch) => branch.isDefault)?.name
+        ?? branches[0]?.name
+        ?? "";
+
+      setBaseBranch((current) =>
+        current && branches.some((branch) => branch.name === current)
+          ? current
+          : defaultBranchName);
+      setTargetBranch((current) => current || defaultBranchName);
+
+      if (!options?.preserveStatusMessage) {
+        setStatusMessage(
+          branches.length > 0
+            ? `Loaded ${branches.length} branches from ${nextOwner}/${nextRepo}.`
+            : `No branches were returned for ${nextOwner}/${nextRepo}.`,
+        );
+      }
+    } catch (error) {
+      setConnectorBranches([]);
+      if (!options?.preserveStatusMessage) {
+        setStatusMessage(
+          formatWorkspaceError(
+            error,
+            `Unable to load branches from ${nextOwner}/${nextRepo}.`,
+          ),
+        );
+      }
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  }
+
   async function loadConnectorRepositories(
     nextConnectorId: string,
     options?: { preserveStatusMessage?: boolean },
@@ -429,9 +498,23 @@ export function useWorkspace(enabled: boolean) {
     setConnectorId(nextConnectorId);
     setOwner("");
     setRepo("");
+    setConnectorBranches([]);
     setBaseBranch("");
     setTargetBranch("");
     setStatusMessage(`Switching repository connector to ${formatConnectorLabel(nextConnectorId)}.`);
+  }
+
+  function createWorkingBranchFromDefault() {
+    const defaultBranchName =
+      connectorBranches.find((branch) => branch.isDefault)?.name
+      || baseBranch
+      || "main";
+
+    setBaseBranch(defaultBranchName);
+    setTargetBranch(defaultBranchName);
+    setStatusMessage(
+      `The next implementation run will create a fresh working branch from ${defaultBranchName}.`,
+    );
   }
 
   async function refreshConnectorStatuses(options?: { preserveStatusMessage?: boolean }) {
@@ -474,14 +557,17 @@ export function useWorkspace(enabled: boolean) {
   return {
     activeThread,
     anthropicModel,
+    connectorBranches,
     connectorId,
     connectorRepositories,
     config,
     connectorStatuses,
     closeConnectorManager,
+    createWorkingBranchFromDefault,
     draft,
     baseBranch,
     isConnectorManagerOpen,
+    isLoadingBranches,
     isLoadingRepositories,
     isLoadingConnectorStatuses,
     isListening,

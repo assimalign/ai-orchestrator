@@ -203,6 +203,29 @@ api.MapGet(
             cancellationToken));
 
 api.MapGet(
+    "/connectors/{connectorId}/repositories/{owner}/{repo}/branches",
+    async (
+        string connectorId,
+        string owner,
+        string repo,
+        CancellationToken cancellationToken) =>
+        await WithRuntime(
+            async currentRuntime =>
+            {
+                if (!string.Equals(connectorId, "github", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.NotFound();
+                }
+
+                var branches = await currentRuntime.GitHubContextService.ListBranchesAsync(
+                    owner,
+                    repo,
+                    cancellationToken);
+                return Results.Ok(branches);
+            },
+            cancellationToken));
+
+api.MapGet(
     "/github/repositories",
     async (CancellationToken cancellationToken) =>
         await WithRuntime(

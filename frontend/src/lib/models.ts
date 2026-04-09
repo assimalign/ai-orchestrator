@@ -127,6 +127,15 @@ export interface ConnectorRepositoryReference {
   url: string;
 }
 
+export interface ConnectorBranchReference {
+  connectorId: string;
+  owner: string;
+  repo: string;
+  name: string;
+  isDefault: boolean;
+  isProtected: boolean;
+}
+
 export interface ConnectorStatusResponse {
   id: string;
   label: string;

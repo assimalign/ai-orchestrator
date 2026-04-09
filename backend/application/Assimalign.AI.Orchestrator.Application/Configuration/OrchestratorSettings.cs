@@ -14,7 +14,7 @@ public sealed class OrchestratorSettings
     public string AnthropicModel { get; init; } = "claude-sonnet-4-20250514";
     public IReadOnlyList<string> OpenAiModelOptions { get; init; } = ["gpt-5.4", "gpt-5.4-mini", "gpt-5-codex"];
     public IReadOnlyList<string> AnthropicModelOptions { get; init; } =
-        ["claude-sonnet-4-20250514", "claude-opus-4-1-20250805", "claude-3-7-sonnet-20250219"];
+        ["claude-sonnet-4-20250514", "claude-opus-4-1-20250805", "claude-opus-4-20250514", "claude-3-7-sonnet-20250219"];
     public string? KeyVaultUrl { get; init; }
     public string? AzureStorageConnectionString { get; init; }
     public string? ServiceBusConnectionString { get; init; }
@@ -92,6 +92,7 @@ public sealed class OrchestratorSettings
                 configuration["ANTHROPIC_MODEL_OPTIONS"],
                 anthropicModel,
                 "claude-opus-4-1-20250805",
+                "claude-opus-4-20250514",
                 "claude-3-7-sonnet-20250219"),
             KeyVaultUrl = configuration["KEY_VAULT_URL"],
             AzureStorageConnectionString = configuration["AZURE_STORAGE_CONNECTION_STRING"],
@@ -152,6 +153,7 @@ public sealed class OrchestratorSettings
             "gpt-5-codex" => "GPT-5 Codex",
             "claude-sonnet-4-20250514" => "Claude Sonnet 4",
             "claude-opus-4-1-20250805" => "Claude Opus 4.1",
+            "claude-opus-4-20250514" => "Claude Opus 4",
             "claude-3-7-sonnet-20250219" => "Claude 3.7 Sonnet",
             _ => modelId,
         };

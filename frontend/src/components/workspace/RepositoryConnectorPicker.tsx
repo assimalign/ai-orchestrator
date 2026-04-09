@@ -70,7 +70,7 @@ export function RepositoryConnectorPicker({
   return (
     <div ref={rootRef} className="relative">
       <button
-        className="flex w-full items-center justify-between gap-3 rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-left transition hover:bg-white/[0.06]"
+        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-left transition hover:bg-white/[0.06]"
         type="button"
         onClick={() => setIsOpen((current) => !current)}
       >
@@ -93,7 +93,7 @@ export function RepositoryConnectorPicker({
       </button>
 
       {isOpen ? (
-        <div className="absolute left-0 z-20 mt-2 w-full min-w-[22rem] overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#232325] shadow-[0_20px_60px_rgba(0,0,0,0.42)]">
+        <div className="absolute left-0 z-40 mt-2 w-full min-w-[22rem] overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#232325] shadow-[0_20px_60px_rgba(0,0,0,0.42)]">
           <div className="border-b border-white/8 p-3">
             <input
               autoFocus
@@ -112,7 +112,7 @@ export function RepositoryConnectorPicker({
               {connectors.map((connector) => (
                 <button
                   key={connector.id}
-                  className={`flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left transition ${
+                  className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-3 py-2 text-left transition ${
                     connector.id === connectorId
                       ? "bg-white/[0.08] text-white"
                       : "text-slate-300 hover:bg-white/[0.05]"
@@ -153,7 +153,7 @@ export function RepositoryConnectorPicker({
                   return (
                     <button
                       key={`${repository.connectorId}:${fullName}`}
-                      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                      className={`w-full cursor-pointer rounded-2xl border px-3 py-3 text-left transition ${
                         selected
                           ? "border-sage-300/25 bg-sage-300/10"
                           : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
@@ -193,7 +193,7 @@ export function RepositoryConnectorPicker({
 
           <div className="border-t border-white/8 p-3">
             <button
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/[0.05]"
+              className="w-full cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/[0.05]"
               type="button"
               onClick={() => {
                 onManageConnectors();

@@ -2,6 +2,7 @@ import { getAccessToken } from "../features/auth/auth-client";
 import { runtimeConfig } from "./runtime-config";
 import type {
   AppConfigResponse,
+  ConnectorBranchReference,
   ConnectorRepositoryReference,
   ConnectorStatusResponse,
   ConversationInput,
@@ -87,6 +88,16 @@ export function promoteThread(threadId: string) {
 export function listConnectorRepositories(connectorId: string) {
   return request<ConnectorRepositoryReference[]>(
     `/api/connectors/${encodeURIComponent(connectorId)}/repositories`,
+  );
+}
+
+export function listConnectorBranches(
+  connectorId: string,
+  owner: string,
+  repo: string,
+) {
+  return request<ConnectorBranchReference[]>(
+    `/api/connectors/${encodeURIComponent(connectorId)}/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`,
   );
 }
 

@@ -1,19 +1,24 @@
 import type { FormEvent, ReactNode } from "react";
 import type {
   AppConfigResponse,
+  ConnectorBranchReference,
   ConnectorRepositoryReference,
   ThreadMessage,
 } from "../../lib/models";
+import { BranchPicker } from "./BranchPicker";
 import { RepositoryConnectorPicker } from "./RepositoryConnectorPicker";
 
 type ComposerPanelProps = {
   anthropicModel: string;
   baseBranch: string;
+  branchOptions: ConnectorBranchReference[];
   config?: AppConfigResponse;
   connectorId: string;
   connectorRepositories: ConnectorRepositoryReference[];
+  createWorkingBranchFromDefault: () => void;
   draft: string;
   hasActiveThread: boolean;
+  isLoadingBranches: boolean;
   isLoadingRepositories: boolean;
   isListening: boolean;
   isSending: boolean;
@@ -40,11 +45,14 @@ type ComposerPanelProps = {
 export function ComposerPanel({
   anthropicModel,
   baseBranch,
+  branchOptions,
   config,
   connectorId,
   connectorRepositories,
+  createWorkingBranchFromDefault,
   draft,
   hasActiveThread,
+  isLoadingBranches,
   isLoadingRepositories,
   isListening,
   isSending,
@@ -73,7 +81,7 @@ export function ComposerPanel({
   }
 
   return (
-    <section className="mt-5 shrink-0 space-y-3">
+    <section className="relative z-10 mt-5 shrink-0 space-y-3">
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,0.8fr))]">
         <RepositoryConnectorPicker
           connectorId={connectorId}
@@ -86,11 +94,15 @@ export function ComposerPanel({
           selectedOwner={owner}
           selectedRepo={repo}
         />
-        <CompactField
+        <BranchPicker
+          branches={branchOptions}
+          disabled={!owner || !repo}
+          isLoading={isLoadingBranches}
           label="Base"
-          placeholder="main"
-          value={baseBranch}
-          onChange={onBaseBranchChange}
+          onCreateFromDefault={createWorkingBranchFromDefault}
+          onSelectBranch={onBaseBranchChange}
+          placeholder="Select a branch"
+          selectedBranch={baseBranch}
         />
         <CompactField
           label="Target"
@@ -215,7 +227,7 @@ function ToolbarSelect({
     <label className="relative inline-flex items-center">
       <span className="sr-only">{label}</span>
       <select
-        className="appearance-none rounded-full border border-white/10 bg-[#343436] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-[#3c3c3f] disabled:cursor-not-allowed disabled:opacity-50"
+        className="cursor-pointer appearance-none rounded-full border border-white/10 bg-[#343436] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-[#3c3c3f] disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled || options.length === 0}
         value={resolvedValue}
         onChange={(event) => onChange(event.target.value)}
@@ -246,7 +258,7 @@ function IconButton({
 }) {
   return (
     <button
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
       type="button"
       aria-label={label}
       title={label}

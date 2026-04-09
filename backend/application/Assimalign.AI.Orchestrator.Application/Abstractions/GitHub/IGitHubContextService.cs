@@ -10,6 +10,11 @@ public interface IGitHubContextService
     Task<IReadOnlyList<GitHubRepositoryReference>> ListRepositoriesAsync(
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ConnectorBranchReference>> ListBranchesAsync(
+        string owner,
+        string repo,
+        CancellationToken cancellationToken = default);
+
     Task<GitHubContextSnapshot?> BuildSnapshotAsync(
         RepositoryTarget? target,
         CancellationToken cancellationToken = default);
