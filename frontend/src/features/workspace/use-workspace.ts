@@ -17,6 +17,7 @@ import type {
   ThreadMessage,
   ThreadStageStatus,
 } from "../../lib/models";
+import { runtimeConfig } from "../../lib/runtime-config";
 
 const activeStatuses: ThreadStageStatus[] = [
   "queued",
@@ -146,11 +147,7 @@ export function useWorkspace(enabled: boolean) {
       setConfig(nextConfig);
       setStatusMessage("Choose a thread or start a new one.");
     } catch (error) {
-      setStatusMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not load the orchestrator shell.",
-      );
+      setStatusMessage(formatWorkspaceError(error, "Could not load the orchestrator shell."));
     }
   }
 
@@ -177,9 +174,7 @@ export function useWorkspace(enabled: boolean) {
       const detail = await getThread(threadId);
       setThreadDetail(detail);
     } catch (error) {
-      setStatusMessage(
-        error instanceof Error ? error.message : "Unable to load that thread.",
-      );
+      setStatusMessage(formatWorkspaceError(error, "Unable to load that thread."));
     }
   }
 
@@ -231,9 +226,7 @@ export function useWorkspace(enabled: boolean) {
           : "Thread updated. The agents are working through the stages.",
       );
     } catch (error) {
-      setStatusMessage(
-        error instanceof Error ? error.message : "Unable to send the message.",
-      );
+      setStatusMessage(formatWorkspaceError(error, "Unable to send the message."));
     } finally {
       setIsSending(false);
     }
@@ -253,9 +246,7 @@ export function useWorkspace(enabled: boolean) {
       await refreshThreads();
       setStatusMessage("The working branch was promoted to the target branch.");
     } catch (error) {
-      setStatusMessage(
-        error instanceof Error ? error.message : "Unable to promote the branch.",
-      );
+      setStatusMessage(formatWorkspaceError(error, "Unable to promote the branch."));
     } finally {
       setIsPromoting(false);
     }
@@ -300,9 +291,7 @@ export function useWorkspace(enabled: boolean) {
       setDraft((current) => [current, recognizedText].filter(Boolean).join(" ").trim());
       setStatusMessage("Transcription captured.");
     } catch (error) {
-      setStatusMessage(
-        error instanceof Error ? error.message : "Voice capture failed.",
-      );
+      setStatusMessage(formatWorkspaceError(error, "Voice capture failed."));
     } finally {
       setIsListening(false);
     }
@@ -354,9 +343,7 @@ export function useWorkspace(enabled: boolean) {
 
       setStatusMessage("Playback finished.");
     } catch (error) {
-      setStatusMessage(
-        error instanceof Error ? error.message : "Unable to read the response.",
-      );
+      setStatusMessage(formatWorkspaceError(error, "Unable to read the response."));
     } finally {
       setIsSpeaking(false);
     }
@@ -431,4 +418,18 @@ function applyModels(
       ?? config?.models.anthropic[0]?.id
       ?? "",
   );
+}
+
+function formatWorkspaceError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : fallback;
+
+  if (message.includes("AADSTS500011") || message.includes("invalid_resource")) {
+    return [
+      "Microsoft Entra API scope is not configured for this app registration.",
+      `The app is requesting api://${runtimeConfig.entraClientId}/access_as_user.`,
+      "In the app registration, open `Expose an API`, set the Application ID URI to match that value, and add a delegated scope named `access_as_user`.",
+    ].join(" ");
+  }
+
+  return message;
 }

@@ -17,4 +17,16 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(runtime);
         return services;
     }
+
+    public static IServiceCollection AddAssimalignAiOrchestratorRuntimeHandle(
+        this IServiceCollection services,
+        OrchestratorSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        services.AddSingleton(new OrchestratorRuntimeHandle(
+            cancellationToken => OrchestratorRuntimeFactory.CreateAsync(settings, cancellationToken)));
+        return services;
+    }
 }

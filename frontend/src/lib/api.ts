@@ -17,18 +17,31 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12000);
 
-  const response = await fetch(`${runtimeConfig.apiBaseUrl}${path}`, {
-    ...init,
-    headers,
-  });
+  try {
+    const response = await fetch(`${runtimeConfig.apiBaseUrl}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Request failed with ${response.status}.`);
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `Request failed with ${response.status}.`);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("The API request timed out. Check whether the API container is healthy.");
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-
-  return (await response.json()) as T;
 }
 
 export function getConfig() {

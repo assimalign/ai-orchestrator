@@ -9,13 +9,28 @@ namespace Assimalign.AI.Orchestrator.Infrastructure.Storage.Tables;
 
 public sealed class TableThreadRepository(string connectionString, string tableName) : IThreadRepository
 {
-    private readonly TableClient client = new(connectionString, tableName);
+    private readonly TableClient client = new(
+        connectionString,
+        tableName,
+        new TableClientOptions
+        {
+            Retry =
+            {
+                Delay = TimeSpan.FromSeconds(1),
+                MaxDelay = TimeSpan.FromSeconds(2),
+                MaxRetries = 2,
+                NetworkTimeout = TimeSpan.FromSeconds(5),
+            },
+        });
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(8));
+
         try
         {
-            await client.CreateIfNotExistsAsync(cancellationToken);
+            await client.CreateIfNotExistsAsync(timeoutCts.Token);
         }
         catch (RequestFailedException error) when (error.Status == 409)
         {
