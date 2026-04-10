@@ -26,7 +26,7 @@ export function WorkspacePage() {
         threads={workspace.threads}
       />
 
-      <main className="flex min-h-[calc(100vh-2.5rem)] min-w-0 flex-col overflow-visible rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_top,_rgba(148,199,176,0.06),transparent_24%),rgba(8,11,14,0.86)] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur">
+      <main className="flex min-h-[calc(100vh-2.5rem)] min-w-0 flex-col overflow-visible rounded-[2rem] border border-white/[0.05] bg-[radial-gradient(circle_at_top,_rgba(148,199,176,0.06),transparent_24%),rgba(8,11,14,0.86)] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur">
         <WorkspaceHeader
           activeThread={workspace.activeThread}
           config={workspace.config}

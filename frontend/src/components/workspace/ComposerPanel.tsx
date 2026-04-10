@@ -121,7 +121,7 @@ export function ComposerPanel({
       </div>
 
       <form
-        className="overflow-hidden rounded-[1.9rem] border border-white/8 bg-white/[0.04] shadow-panel backdrop-blur"
+        className="overflow-hidden rounded-[1.9rem] border border-white/[0.05] bg-white/[0.04] shadow-panel backdrop-blur"
         onSubmit={handleSubmit}
       >
         <textarea
@@ -218,7 +218,7 @@ function CompactField({
   value: string;
 }) {
   return (
-    <label className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-3.5 py-3">
+    <label className="rounded-[1.2rem] border border-white/[0.05] bg-white/[0.03] px-3.5 py-3">
       <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
         {label}
       </span>
@@ -251,7 +251,7 @@ function ToolbarSelect({
     <label className="relative inline-flex items-center">
       <span className="sr-only">{label}</span>
       <select
-        className="cursor-pointer appearance-none rounded-full border border-white/8 bg-white/[0.04] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+        className="cursor-pointer appearance-none rounded-full border border-white/[0.06] bg-white/[0.04] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled || options.length === 0}
         value={resolvedValue}
         onChange={(event) => onChange(event.target.value)}
@@ -282,7 +282,7 @@ function IconButton({
 }) {
   return (
     <button
-      className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/8 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
       type="button"
       aria-label={label}
       title={label}

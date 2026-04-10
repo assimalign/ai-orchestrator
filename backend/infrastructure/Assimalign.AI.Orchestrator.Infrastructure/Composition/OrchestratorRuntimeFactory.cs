@@ -81,6 +81,7 @@ public static class OrchestratorRuntimeFactory
                 ? null
                 : new RepositoryExecutionService(settings, openAiClient, githubContextService);
         var processor = new OrchestrationProcessor(
+            settings,
             repository,
             engine,
             githubContextService,

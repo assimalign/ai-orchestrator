@@ -1,11 +1,13 @@
 using Assimalign.AI.Orchestrator.Application.Abstractions.Execution;
 using Assimalign.AI.Orchestrator.Application.Abstractions.GitHub;
+using Assimalign.AI.Orchestrator.Application.Configuration;
 using Assimalign.AI.Orchestrator.Infrastructure.Storage;
 using Assimalign.AI.Orchestrator.Core.Models;
 
 namespace Assimalign.AI.Orchestrator.Application.Services;
 
 public sealed class OrchestrationProcessor(
+    OrchestratorSettings settings,
     IThreadRepository repository,
     OrchestrationEngine engine,
     IGitHubContextService gitHubContextService,
@@ -26,6 +28,19 @@ public sealed class OrchestrationProcessor(
             .Where(message => message.Id != messageId)
             .ToArray();
 
+        async Task PersistStageUpdateAsync(StageUpdate update)
+        {
+            thread.Status = update.Status;
+            thread.UpdatedAt = DateTimeOffset.UtcNow;
+            await repository.UpdateThreadAsync(thread, cancellationToken);
+
+            if (update.Message is not null)
+            {
+                update.Message.ThreadId = threadId;
+                await repository.AddMessageAsync(update.Message, cancellationToken);
+            }
+        }
+
         try
         {
             var result = await engine.ExecuteAsync(
@@ -36,18 +51,7 @@ public sealed class OrchestrationProcessor(
                     Models = thread.Models,
                 },
                 threadHistory,
-                async update =>
-                {
-                    thread.Status = update.Status;
-                    thread.UpdatedAt = DateTimeOffset.UtcNow;
-                    await repository.UpdateThreadAsync(thread, cancellationToken);
-
-                    if (update.Message is not null)
-                    {
-                        update.Message.ThreadId = threadId;
-                        await repository.AddMessageAsync(update.Message, cancellationToken);
-                    }
-                },
+                PersistStageUpdateAsync,
                 cancellationToken);
 
             thread.UpdatedAt = DateTimeOffset.UtcNow;
@@ -64,16 +68,25 @@ public sealed class OrchestrationProcessor(
 
                 if (thread.Repository?.WorkflowStatus is not RepositoryWorkflowStatus.Failed)
                 {
-                    var executionResult = await ExecuteRepositoryChangesAsync(
+                    var (executionResult, decisionResult) = await ExecuteRepositoryChangesWithRepairAsync(
                         thread,
                         sourceMessage,
                         threadHistory,
                         result,
+                        PersistStageUpdateAsync,
                         cancellationToken);
 
-                    thread.Repository = executionResult.Repository;
-                    thread.Summary = executionResult.Summary;
-                    thread.LastMessagePreview = BuildPreview(executionResult.Summary);
+                    if (executionResult is not null)
+                    {
+                        thread.Repository = executionResult.Repository;
+                        thread.Summary = executionResult.Summary;
+                        thread.LastMessagePreview = BuildPreview(executionResult.Summary);
+                    }
+                    else if (decisionResult is not null)
+                    {
+                        thread.Summary = decisionResult.Summary;
+                        thread.LastMessagePreview = BuildPreview(decisionResult.Summary);
+                    }
                 }
             }
             else if (thread.Repository is not null && ShouldInspectRepository(result.Plan, sourceMessage.Content))
@@ -213,7 +226,7 @@ public sealed class OrchestrationProcessor(
 
     private async Task<RepositoryExecutionResult> ExecuteRepositoryChangesAsync(
         ConversationThread thread,
-        ThreadMessage sourceMessage,
+        string requestText,
         IReadOnlyList<ThreadMessage> threadHistory,
         OrchestrationResult result,
         CancellationToken cancellationToken)
@@ -237,7 +250,7 @@ public sealed class OrchestrationProcessor(
         var executionResult = await repositoryExecutionService.ExecuteAsync(
             new ConversationInput
             {
-                Text = sourceMessage.Content,
+                Text = requestText,
                 Models = thread.Models,
                 Repository = thread.Repository,
             },
@@ -266,6 +279,96 @@ public sealed class OrchestrationProcessor(
             cancellationToken);
 
         return executionResult;
+    }
+
+    private async Task<(RepositoryExecutionResult? ExecutionResult, OrchestrationResult? DecisionResult)> ExecuteRepositoryChangesWithRepairAsync(
+        ConversationThread thread,
+        ThreadMessage sourceMessage,
+        IReadOnlyList<ThreadMessage> threadHistory,
+        OrchestrationResult initialResult,
+        Func<StageUpdate, Task> onStage,
+        CancellationToken cancellationToken)
+    {
+        var currentResult = initialResult;
+        var currentHistory = threadHistory;
+        var maxAttempts = Math.Max(1, settings.MaxExecutionRepairAttempts + 1);
+        Exception? lastError = null;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            var requestText = attempt == 1
+                ? sourceMessage.Content
+                : BuildRepairRequestText(sourceMessage.Content, lastError!, attempt - 1);
+
+            try
+            {
+                var executionResult = await ExecuteRepositoryChangesAsync(
+                    thread,
+                    requestText,
+                    currentHistory,
+                    currentResult,
+                    cancellationToken);
+
+                return (executionResult, null);
+            }
+            catch (Exception error) when (attempt < maxAttempts)
+            {
+                lastError = error;
+                thread.Status = ThreadStageStatus.Reviewing;
+                thread.UpdatedAt = DateTimeOffset.UtcNow;
+                await repository.UpdateThreadAsync(thread, cancellationToken);
+
+                await repository.AddMessageAsync(
+                    new ThreadMessage
+                    {
+                        Id = Guid.NewGuid().ToString("D"),
+                        ThreadId = thread.Id,
+                        Role = ThreadMessageRole.Stage,
+                        Stage = ThreadStageStatus.Failed,
+                        Title = $"Execution attempt {attempt} failed",
+                        Content = BuildExecutionRepairFailureMessage(error, attempt, maxAttempts),
+                        Provider = "codex",
+                        CreatedAt = DateTimeOffset.UtcNow,
+                    },
+                    cancellationToken);
+
+                var repairDetail = await repository.GetThreadDetailAsync(thread.Id, cancellationToken)
+                    ?? throw new InvalidOperationException($"Thread '{thread.Id}' disappeared during execution repair.");
+                currentHistory = repairDetail.Messages
+                    .Where(message => message.Id != sourceMessage.Id)
+                    .ToArray();
+
+                var repairResult = await engine.ExecuteAsync(
+                    new ConversationInput
+                    {
+                        Text = BuildRepairRequestText(sourceMessage.Content, error, attempt),
+                        Repository = thread.Repository,
+                        Models = thread.Models,
+                    },
+                    currentHistory,
+                    onStage,
+                    cancellationToken);
+
+                thread.Summary = repairResult.Summary;
+                thread.LastMessagePreview = BuildPreview(repairResult.Summary);
+                thread.UpdatedAt = DateTimeOffset.UtcNow;
+                await repository.UpdateThreadAsync(thread, cancellationToken);
+
+                if (repairResult.NeedsUserDecision)
+                {
+                    return (null, repairResult);
+                }
+
+                currentResult = repairResult;
+                var refreshedDetail = await repository.GetThreadDetailAsync(thread.Id, cancellationToken)
+                    ?? throw new InvalidOperationException($"Thread '{thread.Id}' disappeared during execution repair.");
+                currentHistory = refreshedDetail.Messages
+                    .Where(message => message.Id != sourceMessage.Id)
+                    .ToArray();
+            }
+        }
+
+        throw lastError ?? new InvalidOperationException("Repository execution failed before any attempt could complete.");
     }
 
     private async Task UpsertExecutionActivityAsync(
@@ -407,6 +510,44 @@ public sealed class OrchestrationProcessor(
         }
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildExecutionRepairFailureMessage(Exception error, int attempt, int maxAttempts)
+    {
+        var remainingAttempts = maxAttempts - attempt;
+        var lines = new List<string>
+        {
+            $"Attempt {attempt} failed while trying to apply or publish the repository changes.",
+            string.Empty,
+            "```text",
+            error.Message.Trim(),
+            "```",
+        };
+
+        if (remainingAttempts > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add($"Codex and Claude are reviewing the failure and will try again ({remainingAttempts} repair attempt{(remainingAttempts == 1 ? string.Empty : "s")} remaining).");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildRepairRequestText(string originalRequest, Exception error, int failedAttemptNumber)
+    {
+        return string.Join(
+            Environment.NewLine,
+            [
+                originalRequest.Trim(),
+                string.Empty,
+                $"Repair context: execution attempt {failedAttemptNumber} failed while applying the agreed repository changes.",
+                "Diagnose the failure, adjust the plan if needed, and continue working until the task succeeds without asking the user unless a real tradeoff requires a decision.",
+                string.Empty,
+                "Execution failure:",
+                "```text",
+                error.Message.Trim(),
+                "```",
+            ]);
     }
 
     private static string BuildInspectionMessage(RepositoryInspectionResult inspectionResult)

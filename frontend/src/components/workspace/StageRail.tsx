@@ -10,7 +10,7 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
   const liveStage = activeStatus ? getLiveStage(activeStatus) : undefined;
 
   return (
-    <section className="mt-5 border-b border-white/8 pb-5">
+    <section className="mt-5 border-b border-white/[0.05] pb-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="max-w-3xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-sage-300">
@@ -27,7 +27,7 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
       </div>
 
       {liveStage ? (
-        <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-sage-300/15 bg-sage-300/[0.07] px-4 py-3">
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-sage-300/12 bg-sage-300/[0.07] px-4 py-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
               {liveStage.provider}
@@ -81,7 +81,7 @@ function StageCard({ message }: { message: ThreadMessage }) {
         : "Agent";
 
   return (
-    <article className="min-w-[220px] flex-1 rounded-[1.35rem] border border-white/8 bg-white/[0.03] p-4">
+    <article className="min-w-[220px] flex-1 rounded-[1.35rem] border border-white/[0.05] bg-white/[0.025] p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
           {providerLabel}
@@ -106,7 +106,7 @@ function StagePlaceholder({
   stage: ThreadStageStatus;
 }) {
   return (
-    <article className="min-w-[220px] flex-1 rounded-[1.35rem] border border-dashed border-white/8 bg-white/[0.02] p-4">
+    <article className="min-w-[220px] flex-1 rounded-[1.35rem] border border-dashed border-white/[0.05] bg-white/[0.018] p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
           {provider}

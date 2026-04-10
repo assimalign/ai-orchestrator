@@ -19,7 +19,7 @@ export function MessageCard({ message }: { message: ThreadMessage }) {
 
   if (message.role === "stage") {
     return (
-      <article className="max-w-4xl rounded-[1.25rem] border border-white/8 bg-white/[0.025] p-4">
+      <article className="max-w-4xl rounded-[1.25rem] border border-white/[0.05] bg-white/[0.02] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
@@ -44,10 +44,10 @@ export function MessageCard({ message }: { message: ThreadMessage }) {
 
   return (
     <article
-      className={`max-w-4xl rounded-[1.5rem] border p-5 ${
+        className={`max-w-4xl rounded-[1.5rem] border p-5 ${
         isUser
-          ? "ml-auto border-sage-300/18 bg-sage-300/[0.08]"
-          : "border-white/8 bg-white/[0.025]"
+          ? "ml-auto border-sage-300/14 bg-sage-300/[0.08]"
+          : "border-white/[0.05] bg-white/[0.02]"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -90,10 +90,10 @@ function ActivityMessageCard({
 
   return (
     <article
-      className={`max-w-4xl rounded-[1.2rem] border p-4 ${
+        className={`max-w-4xl rounded-[1.2rem] border p-4 ${
         isRunning
-          ? "border-sage-300/15 bg-sage-300/[0.055]"
-          : "border-white/8 bg-white/[0.02]"
+          ? "border-sage-300/12 bg-sage-300/[0.055]"
+          : "border-white/[0.05] bg-white/[0.018]"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -108,7 +108,7 @@ function ActivityMessageCard({
             {state === "completed" ? "done" : state}
           </span>
           <button
-            className="rounded-full border border-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition hover:bg-white/[0.05]"
+            className="rounded-full border border-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition hover:bg-white/[0.05]"
             type="button"
             onClick={() => setExpanded((current) => !current)}
           >

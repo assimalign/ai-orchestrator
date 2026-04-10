@@ -11,6 +11,7 @@ public sealed class OrchestratorSettings
     public string TableName { get; init; } = "orchestratorstate";
     public string ServiceBusQueueName { get; init; } = "orchestrator-runs";
     public int MaxConsensusRounds { get; init; } = 2;
+    public int MaxExecutionRepairAttempts { get; init; } = 2;
     public string OpenAiModel { get; init; } = "gpt-5.4";
     public string AnthropicModel { get; init; } = "claude-sonnet-4-20250514";
     public string OpenAiReasoningEffort { get; init; } = "medium";
@@ -103,6 +104,7 @@ public sealed class OrchestratorSettings
                 ?? configuration["SERVICE_BUS_QUEUE_NAME"]
                 ?? "orchestrator-runs",
             MaxConsensusRounds = Math.Max(1, configuration.GetValue("MAX_CONSENSUS_ROUNDS", 2)),
+            MaxExecutionRepairAttempts = Math.Max(0, configuration.GetValue("MAX_EXECUTION_REPAIR_ATTEMPTS", 2)),
             OpenAiModel = openAiModel,
             AnthropicModel = anthropicModel,
             OpenAiReasoningEffort = openAiReasoningEffort,

@@ -370,14 +370,25 @@ public sealed class RepositoryExecutionService(
             cloneUrl,
             workspacePath);
 
-        await RunGitAsync(workspacePath, cancellationToken, "fetch", "origin", repository.WorkingBranch!);
+        if (await RemoteBranchExistsAsync(workspacePath, repository.WorkingBranch!, cancellationToken))
+        {
+            await RunGitAsync(workspacePath, cancellationToken, "fetch", "origin", repository.WorkingBranch!);
+            await RunGitAsync(
+                workspacePath,
+                cancellationToken,
+                "checkout",
+                "-B",
+                repository.WorkingBranch!,
+                $"origin/{repository.WorkingBranch}");
+            return;
+        }
+
         await RunGitAsync(
             workspacePath,
             cancellationToken,
             "checkout",
             "-B",
-            repository.WorkingBranch!,
-            $"origin/{repository.WorkingBranch}");
+            repository.WorkingBranch!);
     }
 
     private async Task ConfigureGitIdentityAsync(
@@ -758,6 +769,26 @@ public sealed class RepositoryExecutionService(
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private async Task<bool> RemoteBranchExistsAsync(
+        string workspacePath,
+        string branchName,
+        CancellationToken cancellationToken)
+    {
+        var result = await RunProcessAsync(
+            workspacePath,
+            "git",
+            ["ls-remote", "--exit-code", "--heads", "origin", branchName],
+            cancellationToken);
+
+        return result.ExitCode switch
+        {
+            0 => true,
+            2 => false,
+            _ => throw new InvalidOperationException(
+                $"Git command failed while checking for remote branch '{branchName}': git ls-remote --exit-code --heads origin {branchName}{Environment.NewLine}{FormatCommandFailure(result)}"),
+        };
     }
 
     private async Task<IReadOnlyList<string>> GetStagedFilesAsync(
