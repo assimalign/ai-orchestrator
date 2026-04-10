@@ -10,24 +10,24 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
   const liveStage = activeStatus ? getLiveStage(activeStatus) : undefined;
 
   return (
-    <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/[0.045] p-5">
+    <section className="mt-5 border-b border-white/8 pb-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
+        <div className="max-w-3xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-sage-300">
             Agent loop
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">
+          <h3 className="mt-2 text-lg font-semibold text-white">
             Codex and Claude handoff
           </h3>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            The stage rail keeps the thread readable while still showing the parallel openings, comparison rounds, and final agreement.
+            A compact view of the parallel openings, comparison rounds, and the final shared direction that drives execution.
           </p>
         </div>
         <StatusPill status={activeStatus ?? "queued"} />
       </div>
 
       {liveStage ? (
-        <div className="mt-5 flex items-center justify-between gap-4 rounded-3xl border border-sage-300/15 bg-sage-300/8 px-4 py-3">
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-sage-300/15 bg-sage-300/[0.07] px-4 py-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
               {liveStage.provider}
@@ -38,7 +38,7 @@ export function StageRail({ activeStatus, messages }: StageRailProps) {
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-3 xl:grid-cols-4">
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
         {messages.length ? (
           messages.map((message) => <StageCard key={message.id} message={message} />)
         ) : (
@@ -81,7 +81,7 @@ function StageCard({ message }: { message: ThreadMessage }) {
         : "Agent";
 
   return (
-    <article className="rounded-3xl border border-white/10 bg-black/20 p-4">
+    <article className="min-w-[220px] flex-1 rounded-[1.35rem] border border-white/8 bg-white/[0.03] p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
           {providerLabel}
@@ -106,7 +106,7 @@ function StagePlaceholder({
   stage: ThreadStageStatus;
 }) {
   return (
-    <article className="rounded-3xl border border-dashed border-white/10 bg-black/15 p-4">
+    <article className="min-w-[220px] flex-1 rounded-[1.35rem] border border-dashed border-white/8 bg-white/[0.02] p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
           {provider}

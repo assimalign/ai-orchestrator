@@ -121,11 +121,11 @@ export function ComposerPanel({
       </div>
 
       <form
-        className="overflow-hidden rounded-[1.9rem] border border-white/10 bg-[#2a2a2b]/95 shadow-panel"
+        className="overflow-hidden rounded-[1.9rem] border border-white/8 bg-white/[0.04] shadow-panel backdrop-blur"
         onSubmit={handleSubmit}
       >
         <textarea
-          className="min-h-[188px] w-full resize-none border-0 bg-transparent px-5 py-5 text-[15px] leading-7 text-slate-100 outline-none placeholder:text-slate-500"
+          className="min-h-[176px] w-full resize-none border-0 bg-transparent px-5 py-5 text-[15px] leading-7 text-slate-100 outline-none placeholder:text-slate-500"
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           placeholder="Ask for follow-up changes"
@@ -218,7 +218,7 @@ function CompactField({
   value: string;
 }) {
   return (
-    <label className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-3.5 py-3">
+    <label className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-3.5 py-3">
       <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
         {label}
       </span>
@@ -251,13 +251,13 @@ function ToolbarSelect({
     <label className="relative inline-flex items-center">
       <span className="sr-only">{label}</span>
       <select
-        className="cursor-pointer appearance-none rounded-full border border-white/10 bg-[#343436] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-[#3c3c3f] disabled:cursor-not-allowed disabled:opacity-50"
+        className="cursor-pointer appearance-none rounded-full border border-white/8 bg-white/[0.04] px-3.5 py-2 pr-9 text-sm font-medium text-slate-200 outline-none transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled || options.length === 0}
         value={resolvedValue}
         onChange={(event) => onChange(event.target.value)}
       >
         {options.map((option) => (
-          <option key={option.id} value={option.id} className="bg-[#343436] text-slate-100">
+          <option key={option.id} value={option.id} className="bg-[#16181c] text-slate-100">
             {option.label}
           </option>
         ))}
@@ -282,7 +282,7 @@ function IconButton({
 }) {
   return (
     <button
-      className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/8 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
       type="button"
       aria-label={label}
       title={label}

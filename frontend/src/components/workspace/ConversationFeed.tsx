@@ -9,7 +9,7 @@ export function ConversationFeed({
   const liveMessage = threadDetail ? getLiveMessage(threadDetail.thread.status) : undefined;
 
   return (
-    <div className="min-h-[22rem] max-h-[min(42rem,55vh)] flex-1 space-y-4 overflow-y-auto pb-5 pr-2">
+    <div className="min-h-[28rem] flex-1 space-y-4 overflow-y-auto pb-6 pr-2">
       {threadDetail?.messages?.length ? (
         <>
           {threadDetail.messages.map((message) => (
@@ -18,16 +18,15 @@ export function ConversationFeed({
           {liveMessage ? <ThinkingMessageCard {...liveMessage} /> : null}
         </>
       ) : (
-        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.045] p-6">
+        <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.025] p-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-sage-300">
             Ready
           </p>
           <h3 className="mt-3 text-2xl font-semibold text-white">
-            Keep working inside one thread.
+            Keep everything in one thread.
           </h3>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-            Ask for a feature, a bug fix, or a design review. Codex will plan,
-            Claude will critique, and the thread will keep the stages visible without flooding the timeline.
+            Ask for a feature, a bug fix, or a repo review. The thread keeps the model discussion, execution steps, and final result in one clean stream.
           </p>
         </div>
       )}
@@ -70,7 +69,7 @@ function ThinkingMessageCard({
   title: string;
 }) {
   return (
-    <article className="max-w-4xl rounded-[1.5rem] border border-sage-300/20 bg-sage-300/6 p-5">
+    <article className="max-w-4xl rounded-[1.35rem] border border-sage-300/18 bg-sage-300/[0.06] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sage-300">
           {provider}

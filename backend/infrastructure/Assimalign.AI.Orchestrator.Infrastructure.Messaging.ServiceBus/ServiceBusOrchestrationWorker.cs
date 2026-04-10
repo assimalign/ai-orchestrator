@@ -66,6 +66,16 @@ public sealed class ServiceBusOrchestrationWorker(
 
             try
             {
+                if (await runtime.Repository.GetThreadAsync(job.ThreadId, stoppingToken) is null)
+                {
+                    logger.LogInformation(
+                        "Skipping stale queue message {MessageId} because thread {ThreadId} no longer exists.",
+                        job.MessageId,
+                        job.ThreadId);
+                    await args.CompleteMessageAsync(args.Message, stoppingToken);
+                    return;
+                }
+
                 logger.LogInformation(
                     "Processing thread {ThreadId} from message {MessageId}.",
                     job.ThreadId,

@@ -10,7 +10,7 @@ type ThreadContextBarProps = {
 
 function ContextChip({ value }: { value: string }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium tracking-[0.12em] text-slate-300">
+    <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-3.5 py-1.5 text-[11px] font-medium tracking-[0.12em] text-slate-300">
       {value}
     </span>
   );
@@ -42,19 +42,19 @@ export function ThreadContextBar({
     && repository?.workflowStatus !== "failed";
 
   return (
-    <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/[0.045] p-5">
+    <div className="mt-5 border-b border-white/8 pb-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
+        <div className="max-w-3xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-sage-300">
             Repository workspace
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">
+          <h3 className="mt-2 text-lg font-semibold text-white">
             {repository ? `${repository.owner}/${repository.repo}` : "Attach a GitHub repository"}
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-400">
             {repository
-              ? "Each thread now works against a repository workspace with a base branch, a working branch for iteration, and a target branch for promotion."
-              : "Choose a GitHub repository and base branch before sending requirements so the thread can prepare a working branch."}
+              ? "Each thread stays grounded in one repository workspace with a base branch, a working branch for iteration, and a target branch for promotion."
+              : "Choose a GitHub repository and base branch before sending requirements so the thread can prepare a working branch when it needs to."}
           </p>
         </div>
 
@@ -63,7 +63,7 @@ export function ThreadContextBar({
           <div className="flex flex-wrap gap-3">
             {repository?.compareUrl ? (
               <a
-                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10"
+                className="rounded-full border border-white/8 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]"
                 href={repository.compareUrl}
                 target="_blank"
                 rel="noreferrer"
@@ -83,7 +83,7 @@ export function ThreadContextBar({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-4 flex flex-wrap gap-2.5">
         <ContextChip
           value={
             repository

@@ -16,5 +16,6 @@ public interface IRepositoryExecutionService
         RepositoryTarget repository,
         OrchestrationResult orchestration,
         IReadOnlyList<ThreadMessage>? threadHistory,
+        Func<ExecutionActivityUpdate, Task>? onActivity = null,
         CancellationToken cancellationToken = default);
 }

@@ -53,7 +53,7 @@ export function BranchPicker({
   return (
     <div ref={rootRef} className="relative">
       <button
-        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-left transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-3.5 py-3 text-left transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
         type="button"
         onClick={() => setIsOpen((current) => !current)}
         disabled={disabled}
@@ -67,7 +67,7 @@ export function BranchPicker({
               {selected?.name || selectedBranch || placeholder}
             </span>
             {selected?.isDefault ? (
-              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sage-300">
+              <span className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sage-300">
                 Default
               </span>
             ) : null}
@@ -79,7 +79,7 @@ export function BranchPicker({
       </button>
 
       {isOpen ? (
-        <div className="absolute left-0 z-40 mt-2 w-full min-w-[22rem] overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#232325] shadow-[0_20px_60px_rgba(0,0,0,0.42)]">
+        <div className="absolute left-0 z-40 mt-2 w-full min-w-[22rem] overflow-hidden rounded-[1.4rem] border border-white/8 bg-[#16181c]/98 shadow-[0_20px_60px_rgba(0,0,0,0.42)] backdrop-blur">
           <div className="border-b border-white/8 p-3">
             <button
               className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-sage-300/20 bg-sage-300/10 px-3.5 py-3 text-left transition hover:bg-sage-300/15"

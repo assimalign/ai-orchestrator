@@ -21,6 +21,12 @@ public interface IThreadRepository
     Task UpdateThreadAsync(
         ConversationThread thread,
         CancellationToken cancellationToken = default);
+    Task DeleteThreadAsync(
+        string threadId,
+        CancellationToken cancellationToken = default);
+    Task UpdateMessageAsync(
+        ThreadMessage message,
+        CancellationToken cancellationToken = default);
     Task AddMessageAsync(ThreadMessage message, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ThreadMessage>> ListMessagesAsync(
         string threadId,

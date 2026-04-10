@@ -107,6 +107,47 @@ public sealed class TableThreadRepository(string connectionString, string tableN
         CancellationToken cancellationToken = default) =>
         client.UpsertEntityAsync(ToThreadEntity(thread), TableUpdateMode.Replace, cancellationToken);
 
+    public async Task DeleteThreadAsync(
+        string threadId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await client.DeleteEntityAsync(
+                ThreadPartitionKey,
+                threadId,
+                cancellationToken: cancellationToken);
+        }
+        catch (RequestFailedException error) when (error.Status == 404)
+        {
+        }
+
+        var messageEntities = new List<TableEntity>();
+        await foreach (var entity in client.QueryAsync<TableEntity>(
+                           filter: $"PartitionKey eq '{GetMessagePartitionKey(threadId)}'",
+                           cancellationToken: cancellationToken))
+        {
+            messageEntities.Add(entity);
+        }
+
+        foreach (var entity in messageEntities)
+        {
+            try
+            {
+                await client.DeleteEntityAsync(
+                    entity.PartitionKey,
+                    entity.RowKey,
+                    cancellationToken: cancellationToken);
+            }
+            catch (RequestFailedException error) when (error.Status == 404)
+            {
+            }
+        }
+    }
+
+    public Task UpdateMessageAsync(ThreadMessage message, CancellationToken cancellationToken = default) =>
+        client.UpsertEntityAsync(ToMessageEntity(message), TableUpdateMode.Replace, cancellationToken);
+
     public Task AddMessageAsync(ThreadMessage message, CancellationToken cancellationToken = default) =>
         client.UpsertEntityAsync(ToMessageEntity(message), TableUpdateMode.Replace, cancellationToken);
 

@@ -218,6 +218,8 @@ public sealed class OrchestrationProcessor(
         OrchestrationResult result,
         CancellationToken cancellationToken)
     {
+        var executionActivityMessages = new Dictionary<string, (string MessageId, DateTimeOffset CreatedAt)>(StringComparer.OrdinalIgnoreCase);
+
         await repository.AddMessageAsync(
             new ThreadMessage
             {
@@ -242,6 +244,11 @@ public sealed class OrchestrationProcessor(
             thread.Repository!,
             result,
             threadHistory,
+            update => UpsertExecutionActivityAsync(
+                thread.Id,
+                update,
+                executionActivityMessages,
+                cancellationToken),
             cancellationToken);
 
         await repository.AddMessageAsync(
@@ -259,6 +266,52 @@ public sealed class OrchestrationProcessor(
             cancellationToken);
 
         return executionResult;
+    }
+
+    private async Task UpsertExecutionActivityAsync(
+        string threadId,
+        ExecutionActivityUpdate update,
+        Dictionary<string, (string MessageId, DateTimeOffset CreatedAt)> activityMessages,
+        CancellationToken cancellationToken)
+    {
+        if (activityMessages.TryGetValue(update.ActivityId, out var existingMessage))
+        {
+            await repository.UpdateMessageAsync(
+                new ThreadMessage
+                {
+                    Id = existingMessage.MessageId,
+                    ThreadId = threadId,
+                    Role = ThreadMessageRole.Stage,
+                    Stage = update.Stage,
+                    Title = update.Title,
+                    Content = update.Content,
+                    Provider = update.Provider,
+                    CreatedAt = existingMessage.CreatedAt,
+                    Metadata = update.Metadata,
+                },
+                cancellationToken);
+
+            return;
+        }
+
+        var newMessageId = Guid.NewGuid().ToString("D");
+        var createdAt = DateTimeOffset.UtcNow;
+        activityMessages[update.ActivityId] = (newMessageId, createdAt);
+
+        await repository.AddMessageAsync(
+            new ThreadMessage
+            {
+                Id = newMessageId,
+                ThreadId = threadId,
+                Role = ThreadMessageRole.Stage,
+                Stage = update.Stage,
+                Title = update.Title,
+                Content = update.Content,
+                Provider = update.Provider,
+                CreatedAt = createdAt,
+                Metadata = update.Metadata,
+            },
+            cancellationToken);
     }
 
     private async Task PrepareWorkingBranchAsync(

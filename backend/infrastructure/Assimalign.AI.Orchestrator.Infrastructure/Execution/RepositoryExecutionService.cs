@@ -85,6 +85,7 @@ public sealed class RepositoryExecutionService(
         RepositoryTarget repository,
         OrchestrationResult orchestration,
         IReadOnlyList<ThreadMessage>? threadHistory,
+        Func<ExecutionActivityUpdate, Task>? onActivity = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
@@ -114,11 +115,46 @@ public sealed class RepositoryExecutionService(
 
         try
         {
+            if (onActivity is not null)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "clone",
+                    "Cloning repository workspace",
+                    BuildCommandActivityContent([
+                        $"git clone --branch {repository.BaseBranch ?? repository.TargetBranch ?? repository.DefaultBranch ?? "main"} --single-branch <repo> <workspace>",
+                        $"git fetch origin {repository.WorkingBranch}",
+                        $"git checkout -B {repository.WorkingBranch} origin/{repository.WorkingBranch}",
+                    ]),
+                    "running",
+                    provider: "github"));
+            }
+
             await CloneRepositoryAsync(repository, accessToken, workspacePath, cancellationToken);
             await ConfigureGitIdentityAsync(workspacePath, cancellationToken);
 
+            if (onActivity is not null)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "clone",
+                    "Repository workspace ready",
+                    BuildSummaryActivityContent("Working branch cloned and checked out locally."),
+                    "completed",
+                    provider: "github"));
+            }
+
             var repositoryTree = await BuildRepositoryTreeAsync(workspacePath, cancellationToken);
             var executionEnvironment = BuildExecutionEnvironmentDescription();
+
+            if (onActivity is not null)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "plan",
+                    "Preparing execution plan",
+                    BuildSummaryActivityContent("Codex is selecting files, shaping edits, and deciding which commands to run."),
+                    "running",
+                    provider: "codex"));
+            }
+
             var executionContext = await openAiClient.GenerateStructuredAsync<RepositoryExecutionContextArtifact>(
                 BuildExecutionContextRequest(
                     input,
@@ -141,6 +177,17 @@ public sealed class RepositoryExecutionService(
                     threadHistory),
                 cancellationToken);
 
+            if (onActivity is not null)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "plan",
+                    "Execution plan agreed",
+                    BuildSummaryActivityContent(
+                        $"Selected {selectedFiles.Count} file{(selectedFiles.Count == 1 ? string.Empty : "s")} and prepared the execution steps."),
+                    "completed",
+                    provider: "codex"));
+            }
+
             var normalizedArtifact = NormalizeExecutionArtifact(executionContext, executionArtifact);
             ApplyChanges(workspacePath, normalizedArtifact.Changes);
 
@@ -150,17 +197,74 @@ public sealed class RepositoryExecutionService(
                 throw new InvalidOperationException("Codex did not produce any repository file changes to commit.");
             }
 
+            if (onActivity is not null)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "changes",
+                    "Applying repository edits",
+                    BuildChangesActivityContent(changedFiles),
+                    "completed",
+                    provider: "codex"));
+            }
+
+            if (onActivity is not null && normalizedArtifact.SetupCommands.Count > 0)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "setup",
+                    "Running setup commands",
+                    BuildCommandActivityContent(normalizedArtifact.SetupCommands),
+                    "running"));
+            }
             var setupResults = await RunShellCommandsAsync(
                 workspacePath,
                 normalizedArtifact.SetupCommands,
                 cancellationToken);
             EnsureCommandsSucceeded(setupResults, "Setup");
 
+            if (onActivity is not null && normalizedArtifact.SetupCommands.Count > 0)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "setup",
+                    "Setup commands completed",
+                    BuildCommandResultsContent(setupResults),
+                    "completed"));
+            }
+
+            if (onActivity is not null && normalizedArtifact.TestCommands.Count > 0)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "verify",
+                    "Running verification commands",
+                    BuildCommandActivityContent(normalizedArtifact.TestCommands),
+                    "running"));
+            }
             var testResults = await RunShellCommandsAsync(
                 workspacePath,
                 normalizedArtifact.TestCommands,
                 cancellationToken);
             EnsureCommandsSucceeded(testResults, "Verification");
+
+            if (onActivity is not null && normalizedArtifact.TestCommands.Count > 0)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "verify",
+                    "Verification commands completed",
+                    BuildCommandResultsContent(testResults),
+                    "completed"));
+            }
+
+            if (onActivity is not null)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "publish",
+                    "Publishing branch updates",
+                    BuildCommandActivityContent([
+                        "git add -A",
+                        $"git commit -m \"{(string.IsNullOrWhiteSpace(normalizedArtifact.CommitMessage) ? executionContext.CommitMessage : normalizedArtifact.CommitMessage.Trim())}\"",
+                        $"git push origin HEAD:{repository.WorkingBranch}",
+                    ]),
+                    "running"));
+            }
 
             await RunGitAsync(workspacePath, cancellationToken, "add", "-A");
 
@@ -186,6 +290,16 @@ public sealed class RepositoryExecutionService(
                 "push",
                 "origin",
                 $"HEAD:{repository.WorkingBranch}");
+
+            if (onActivity is not null)
+            {
+                await onActivity(BuildActivityUpdate(
+                    "publish",
+                    "Branch published",
+                    BuildSummaryActivityContent(
+                        $"Committed `{commitSha[..Math.Min(7, commitSha.Length)]}` and pushed it to `{repository.WorkingBranch}`."),
+                    "completed"));
+            }
 
             var updatedRepository = CloneRepository(repository);
             updatedRepository.WorkflowStatus = RepositoryWorkflowStatus.ReadyForReview;
@@ -828,6 +942,125 @@ public sealed class RepositoryExecutionService(
             }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
         return string.IsNullOrWhiteSpace(output) ? $"Exit code: {result.ExitCode}" : output;
+    }
+
+    private static ExecutionActivityUpdate BuildActivityUpdate(
+        string activityId,
+        string title,
+        string content,
+        string state,
+        string provider = "codex") =>
+        new()
+        {
+            ActivityId = activityId,
+            Title = title,
+            Content = content,
+            Provider = provider,
+            Stage = ThreadStageStatus.Synthesizing,
+            Metadata = new Dictionary<string, string>
+            {
+                ["kind"] = "activity",
+                ["state"] = state,
+                ["rollup"] = "true",
+            },
+        };
+
+    private static string BuildCommandActivityContent(IReadOnlyList<string> commands)
+    {
+        if (commands.Count == 0)
+        {
+            return "No commands were needed for this phase.";
+        }
+
+        return string.Join(
+            Environment.NewLine,
+            [
+                $"{commands.Count} command{(commands.Count == 1 ? string.Empty : "s")} in this phase:",
+                string.Empty,
+                "```bash",
+                ..commands,
+                "```",
+            ]);
+    }
+
+    private static string BuildCommandResultsContent(IReadOnlyList<CommandExecutionResult> results)
+    {
+        if (results.Count == 0)
+        {
+            return "No commands were needed for this phase.";
+        }
+
+        var lines = new List<string>
+        {
+            $"{results.Count} command{(results.Count == 1 ? string.Empty : "s")} completed.",
+        };
+
+        foreach (var result in results)
+        {
+            lines.Add(string.Empty);
+            lines.Add($"- `{result.Command}`");
+            lines.Add($"  Exit code: {result.ExitCode}");
+
+            var output = TrimOutput(result.StandardOutput);
+            var error = TrimOutput(result.StandardError);
+
+            if (!string.IsNullOrWhiteSpace(output))
+            {
+                lines.Add("  Output:");
+                lines.Add("  ```text");
+                lines.AddRange(output.Split(Environment.NewLine).Select(line => $"  {line}"));
+                lines.Add("  ```");
+            }
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                lines.Add("  Error:");
+                lines.Add("  ```text");
+                lines.AddRange(error.Split(Environment.NewLine).Select(line => $"  {line}"));
+                lines.Add("  ```");
+            }
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildChangesActivityContent(IReadOnlyList<string> changedFiles)
+    {
+        if (changedFiles.Count == 0)
+        {
+            return "No file changes were applied.";
+        }
+
+        var lines = new List<string>
+        {
+            $"{changedFiles.Count} file{(changedFiles.Count == 1 ? string.Empty : "s")} changed:",
+            string.Empty,
+        };
+
+        lines.AddRange(changedFiles.Take(12).Select(path => $"- `{path}`"));
+
+        if (changedFiles.Count > 12)
+        {
+            lines.Add("- ...");
+        }
+
+        return string.Join(Environment.NewLine, lines.Where(line => !string.IsNullOrWhiteSpace(line)));
+    }
+
+    private static string BuildSummaryActivityContent(string text) => text.Trim();
+
+    private static string TrimOutput(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        const int maxLength = 2000;
+        var normalized = value.Trim();
+        return normalized.Length <= maxLength
+            ? normalized
+            : $"{normalized[..maxLength]}{Environment.NewLine}... truncated ...";
     }
 
     private static RepositoryTarget CloneRepository(RepositoryTarget source) =>

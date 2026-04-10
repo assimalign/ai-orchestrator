@@ -59,6 +59,12 @@ export function getThread(threadId: string) {
   return request<ConversationThreadDetail>(`/api/threads/${threadId}`);
 }
 
+export function deleteThread(threadId: string) {
+  return request<{ deleted: boolean }>(`/api/threads/${threadId}`, {
+    method: "DELETE",
+  });
+}
+
 export function createThread(input: ConversationInput) {
   return request<ConversationThreadDetail>("/api/threads", {
     body: JSON.stringify(input),

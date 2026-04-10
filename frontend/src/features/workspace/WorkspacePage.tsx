@@ -14,17 +14,19 @@ export function WorkspacePage() {
   const workspace = useWorkspace(auth.isAuthenticated);
 
   return (
-    <div className="mx-auto grid min-h-screen max-w-[1600px] items-start gap-4 px-4 py-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="mx-auto grid min-h-screen max-w-[1680px] items-start gap-5 px-5 py-5 xl:grid-cols-[296px_minmax(0,1fr)]">
       <ThreadSidebar
         accountLabel={auth.accountLabel}
         activeThreadId={workspace.activeThread?.id}
+        deletingThreadId={workspace.deletingThreadId}
+        onDeleteThread={workspace.deleteThreadById}
         onSelectThread={workspace.setSelectedThreadId}
         onSignOut={auth.signOut}
         onStartNewThread={workspace.startNewThread}
         threads={workspace.threads}
       />
 
-      <main className="flex min-h-[calc(100vh-2rem)] min-w-0 flex-col overflow-visible rounded-[2rem] border border-white/10 bg-black/20 p-5 backdrop-blur">
+      <main className="flex min-h-[calc(100vh-2.5rem)] min-w-0 flex-col overflow-visible rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_top,_rgba(148,199,176,0.06),transparent_24%),rgba(8,11,14,0.86)] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur">
         <WorkspaceHeader
           activeThread={workspace.activeThread}
           config={workspace.config}
@@ -42,7 +44,7 @@ export function WorkspacePage() {
           messages={workspace.stageMessages}
         />
 
-        <section className="mt-6 flex min-h-0 flex-1 flex-col overflow-visible">
+        <section className="mt-6 flex min-h-0 flex-1 flex-col overflow-hidden">
           <ConversationFeed threadDetail={workspace.threadDetail} />
           <ComposerPanel
             anthropicModel={workspace.anthropicModel}

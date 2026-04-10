@@ -294,6 +294,16 @@ public sealed class RepositoryExecutionResult
     public IReadOnlyList<CommandExecutionResult> TestResults { get; init; } = [];
 }
 
+public sealed class ExecutionActivityUpdate
+{
+    public string ActivityId { get; init; } = string.Empty;
+    public ThreadStageStatus Stage { get; init; } = ThreadStageStatus.Synthesizing;
+    public string Title { get; init; } = string.Empty;
+    public string Content { get; init; } = string.Empty;
+    public string Provider { get; init; } = "github";
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
 public sealed class OrchestrationResult
 {
     public GitHubContextSnapshot? Context { get; set; }

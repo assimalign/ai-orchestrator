@@ -21,6 +21,16 @@ public sealed class ThreadConversationService(
         CancellationToken cancellationToken = default) =>
         repository.GetThreadDetailAsync(threadId, cancellationToken);
 
+    public async Task DeleteThreadAsync(
+        string threadId,
+        CancellationToken cancellationToken = default)
+    {
+        var thread = await repository.GetThreadAsync(threadId, cancellationToken)
+            ?? throw new InvalidOperationException($"Thread '{threadId}' was not found.");
+
+        await repository.DeleteThreadAsync(thread.Id, cancellationToken);
+    }
+
     public async Task<ConversationThreadDetail> CreateThreadAsync(
         ConversationInput input,
         CancellationToken cancellationToken = default)

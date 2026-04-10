@@ -67,6 +67,41 @@ public sealed class MemoryThreadRepository : IThreadRepository
         return Task.CompletedTask;
     }
 
+    public Task DeleteThreadAsync(
+        string threadId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        threads.Remove(threadId);
+        messages.Remove(threadId);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateMessageAsync(
+        ThreadMessage message,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!messages.TryGetValue(message.ThreadId, out var list))
+        {
+            list = [];
+            messages[message.ThreadId] = list;
+        }
+
+        var index = list.FindIndex(candidate => candidate.Id == message.Id);
+        if (index >= 0)
+        {
+            list[index] = CloneMessage(message);
+        }
+        else
+        {
+            list.Add(CloneMessage(message));
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task AddMessageAsync(ThreadMessage message, CancellationToken cancellationToken = default)
     {
         if (!messages.TryGetValue(message.ThreadId, out var list))

@@ -98,6 +98,26 @@ api.MapGet(
             },
             cancellationToken));
 
+api.MapDelete(
+    "/threads/{threadId}",
+    async (
+        string threadId,
+        CancellationToken cancellationToken) =>
+        await WithRuntime(
+            async currentRuntime =>
+            {
+                try
+                {
+                    await currentRuntime.ThreadService.DeleteThreadAsync(threadId, cancellationToken);
+                    return Results.Ok(new { deleted = true });
+                }
+                catch (InvalidOperationException error)
+                {
+                    return Results.NotFound(error.Message);
+                }
+            },
+            cancellationToken));
+
 api.MapPost(
     "/threads/{threadId}/messages",
     async (

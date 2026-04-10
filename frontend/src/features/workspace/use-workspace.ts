@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   buildRepositoryTarget,
   createThread,
+  deleteThread,
   getConnectorStatus,
   getConfig,
   getSpeechToken,
@@ -63,6 +64,7 @@ export function useWorkspace(enabled: boolean) {
   const [isLoadingConnectorStatuses, setIsLoadingConnectorStatuses] = useState(false);
   const [connectorStatuses, setConnectorStatuses] = useState<Record<string, ConnectorStatusResponse>>({});
   const [isSending, setIsSending] = useState(false);
+  const [deletingThreadId, setDeletingThreadId] = useState<string>();
   const [isPromoting, setIsPromoting] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -81,7 +83,7 @@ export function useWorkspace(enabled: boolean) {
 
   const stageMessages = useMemo(() => {
     return (threadDetail?.messages ?? [])
-      .filter((message) => message.role === "stage")
+      .filter((message) => message.role === "stage" && message.metadata?.kind !== "activity")
       .slice(-compactStageLimit);
   }, [threadDetail]);
 
@@ -328,6 +330,40 @@ export function useWorkspace(enabled: boolean) {
       setStatusMessage(formatWorkspaceError(error, "Unable to send the message."));
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function deleteThreadById(threadId: string) {
+    const thread = threads.find((candidate) => candidate.id === threadId)
+      ?? (threadDetail?.thread.id === threadId ? threadDetail.thread : undefined);
+    const label = thread?.title?.trim() || "this thread";
+    const confirmed = window.confirm(`Delete ${label}? This will remove the thread and its messages.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingThreadId(threadId);
+    setStatusMessage("Deleting the selected thread.");
+
+    try {
+      await deleteThread(threadId);
+
+      if (selectedThreadId === threadId) {
+        setSelectedThreadId(undefined);
+        setThreadDetail(undefined);
+      }
+
+      const nextThreads = await refreshThreads();
+      if (!nextThreads.length) {
+        setThreadDetail(undefined);
+      }
+
+      setStatusMessage("Thread deleted.");
+    } catch (error) {
+      setStatusMessage(formatWorkspaceError(error, "Unable to delete that thread."));
+    } finally {
+      setDeletingThreadId(undefined);
     }
   }
 
@@ -610,6 +646,8 @@ export function useWorkspace(enabled: boolean) {
     connectorStatuses,
     closeConnectorManager,
     createWorkingBranchFromDefault,
+    deleteThreadById,
+    deletingThreadId,
     draft,
     baseBranch,
     isConnectorManagerOpen,
